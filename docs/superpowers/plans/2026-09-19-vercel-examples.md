@@ -35,7 +35,7 @@
 - Consumes: root `createJudge(options)` and `vercelGateway(options)` public exports.
 - Produces: `judge: JudgeClient` and `printResult(label: string, value: unknown): void` for every numbered example.
 
-- [ ] **Step 1: Add a failing credential-safety contract test**
+- [x] **Step 1: Add a failing credential-safety contract test**
 
 Create `test/examples.test.ts` with the first contract:
 
@@ -55,13 +55,13 @@ test("example credentials stay out of Git", () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test in the red state**
+- [x] **Step 2: Run the focused test in the red state**
 
 Run: `node --test test/examples.test.ts`
 
 Expected: FAIL because `.env.example` does not exist.
 
-- [ ] **Step 3: Ignore local environment files and add the safe template**
+- [x] **Step 3: Ignore local environment files and add the safe template**
 
 Append these exact rules to `.gitignore`:
 
@@ -81,7 +81,7 @@ Run: `git check-ignore .env .env.local && ! git check-ignore .env.example`
 
 Expected: `.env` and `.env.local` are reported as ignored; `.env.example` is not ignored.
 
-- [ ] **Step 4: Add the shared explicit Vercel configuration**
+- [x] **Step 4: Add the shared explicit Vercel configuration**
 
 Create `examples/_shared.ts`:
 
@@ -122,13 +122,13 @@ intended interface of runnable examples:
 }
 ```
 
-- [ ] **Step 5: Run the focused test and lint**
+- [x] **Step 5: Run the focused test and lint**
 
 Run: `node --test test/examples.test.ts && npm run lint`
 
 Expected: PASS with no network activity.
 
-- [ ] **Step 6: Commit the credential boundary and helper**
+- [x] **Step 6: Commit the credential boundary and helper**
 
 ```bash
 git add .gitignore .env.example biome.jsonc examples/_shared.ts test/examples.test.ts
@@ -149,7 +149,7 @@ git commit -m "feat: add safe Vercel example harness"
 - Consumes: `judge` and `printResult` from `examples/_shared.ts`.
 - Produces: five independent, single-evaluation programs covering `boolean`, `if`, `choice`, `switch`, and `score`.
 
-- [ ] **Step 1: Extend the contract test for the five focused examples**
+- [x] **Step 1: Extend the contract test for the five focused examples**
 
 Append to `test/examples.test.ts`:
 
@@ -173,13 +173,13 @@ test("focused examples use the shared harness exactly once", () => {
 });
 ```
 
-- [ ] **Step 2: Run the contract test in the red state**
+- [x] **Step 2: Run the contract test in the red state**
 
 Run: `node --test test/examples.test.ts`
 
 Expected: FAIL because the five numbered files do not exist.
 
-- [ ] **Step 3: Add `boolean()` and `if()` examples**
+- [x] **Step 3: Add `boolean()` and `if()` examples**
 
 Create `examples/01-boolean.ts`:
 
@@ -231,7 +231,7 @@ const result = await judge.if({
 printResult("If result", result);
 ```
 
-- [ ] **Step 4: Add `choice()`, `switch()`, and `score()` examples**
+- [x] **Step 4: Add `choice()`, `switch()`, and `score()` examples**
 
 Create `examples/03-choice.ts`:
 
@@ -299,13 +299,13 @@ const decision = await judge.score({
 printResult("Score decision", decision);
 ```
 
-- [ ] **Step 5: Run focused contract, lint, and source typecheck**
+- [x] **Step 5: Run focused contract, lint, and source typecheck**
 
 Run: `node --test test/examples.test.ts && npm run lint && npm run typecheck`
 
 Expected: PASS without evaluating any example.
 
-- [ ] **Step 6: Commit the focused examples**
+- [x] **Step 6: Commit the focused examples**
 
 ```bash
 git add examples/0{1,2,3,4,5}-*.ts test/examples.test.ts
@@ -325,7 +325,7 @@ git commit -m "feat: add focused Judge examples"
 - Consumes: the shared Vercel-backed `judge` and `printResult` helper.
 - Produces: four single-evaluation programs spanning business routing, risk, operations, and agent orchestration.
 
-- [ ] **Step 1: Extend the contract test for all nine files**
+- [x] **Step 1: Extend the contract test for all nine files**
 
 Replace `focusedExamples` in `test/examples.test.ts` with:
 
@@ -346,13 +346,13 @@ const exampleFiles = [
 Rename the test to `"every numbered example uses the shared harness exactly once"`
 and iterate over `exampleFiles`.
 
-- [ ] **Step 2: Run the contract test in the red state**
+- [x] **Step 2: Run the contract test in the red state**
 
 Run: `node --test test/examples.test.ts`
 
 Expected: FAIL because examples 06 through 09 do not exist.
 
-- [ ] **Step 3: Add support and transaction-risk scenarios**
+- [x] **Step 3: Add support and transaction-risk scenarios**
 
 Create `examples/06-support-triage.ts`:
 
@@ -423,7 +423,7 @@ const action =
 printResult("Transaction risk", { action, risk });
 ```
 
-- [ ] **Step 4: Add incident and agent-routing scenarios**
+- [x] **Step 4: Add incident and agent-routing scenarios**
 
 Create `examples/08-incident-escalation.ts`:
 
@@ -500,13 +500,13 @@ const routing = await judge.switch({
 printResult("Agent tool routing", routing);
 ```
 
-- [ ] **Step 5: Run focused contract, lint, and source typecheck**
+- [x] **Step 5: Run focused contract, lint, and source typecheck**
 
 Run: `node --test test/examples.test.ts && npm run lint && npm run typecheck`
 
 Expected: PASS with nine source files checked structurally and no network calls.
 
-- [ ] **Step 6: Commit the domain examples**
+- [x] **Step 6: Commit the domain examples**
 
 ```bash
 git add examples/0{6,7,8,9}-*.ts test/examples.test.ts
@@ -526,7 +526,7 @@ git commit -m "feat: add mixed-domain Judge examples"
 - Consumes: all nine numbered examples and package `exports` declarations.
 - Produces: `typecheck:examples`, nine individual `example:*` commands, and `example:all`.
 
-- [ ] **Step 1: Add failing script and documentation assertions**
+- [x] **Step 1: Add failing script and documentation assertions**
 
 Append to `test/examples.test.ts`:
 
@@ -551,13 +551,13 @@ test("package scripts expose typed and live example commands", () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test in the red state**
+- [x] **Step 2: Run the focused test in the red state**
 
 Run: `node --test test/examples.test.ts`
 
 Expected: FAIL because the example scripts do not exist.
 
-- [ ] **Step 3: Add the dedicated public-package typecheck**
+- [x] **Step 3: Add the dedicated public-package typecheck**
 
 Create `tsconfig.examples.json`:
 
@@ -591,7 +591,7 @@ Add these exact scripts to `package.json`:
 }
 ```
 
-- [ ] **Step 4: Document setup, commands, and billing behavior**
+- [x] **Step 4: Document setup, commands, and billing behavior**
 
 Create `examples/README.md` with:
 
@@ -648,14 +648,14 @@ Add an `Examples` section to the root `README.md` that links to
 `examples/README.md`, shows `cp .env.example .env`, and states that the aggregate
 command performs nine remote evaluations.
 
-- [ ] **Step 5: Run contract and public declaration checks**
+- [x] **Step 5: Run contract and public declaration checks**
 
 Run: `node --test test/examples.test.ts && npm run typecheck:examples`
 
 Expected: PASS. `typecheck:examples` builds first and compiles package imports;
 it does not execute the examples.
 
-- [ ] **Step 6: Commit scripts and documentation**
+- [x] **Step 6: Commit scripts and documentation**
 
 ```bash
 git add tsconfig.examples.json examples/README.md package.json README.md test/examples.test.ts
@@ -671,22 +671,21 @@ git commit -m "docs: add Vercel example commands"
 - Consumes: the finished example suite and all repository verification scripts.
 - Produces: a fully checked local branch ready to push; live execution remains user-controlled.
 
-- [ ] **Step 1: Verify credentials are absent and ignored**
+- [x] **Step 1: Verify credentials are absent and ignored**
 
 Run:
 
 ```bash
 git check-ignore .env .env.local
 git ls-files .env .env.local
-rg -n -P 'AI_GATEWAY_API_KEY=(?!$|your_key_here$)[^\s]+' . \
-  --glob '!node_modules/**' --glob '!dist/**' --glob '!.env' \
-  --glob '!docs/superpowers/**'
+git grep -n -E 'AI_GATEWAY_API_KEY=[[:alnum:]_./+-]{16,}' \
+  -- ':!docs/superpowers/**'
 ```
 
 Expected: the first command reports both ignored paths; `git ls-files` prints
 nothing; the search finds no committed credential value.
 
-- [ ] **Step 2: Run focused and medium gates**
+- [x] **Step 2: Run focused and medium gates**
 
 Run:
 
@@ -698,14 +697,14 @@ npm run lint
 
 Expected: every command exits zero without network access.
 
-- [ ] **Step 3: Run the full repository gate**
+- [x] **Step 3: Run the full repository gate**
 
 Run: `npm run check && npm run build && npm pack --dry-run`
 
 Expected: all unit tests, declaration checks, emitted-graph isolation checks,
 build, and package dry run pass. No numbered example executes.
 
-- [ ] **Step 4: Confirm live commands without invoking them**
+- [x] **Step 4: Confirm live commands without invoking them**
 
 Run:
 
@@ -718,7 +717,7 @@ Expected: both scripts use `node --env-file=.env`, and the installed Node versio
 documents native `--env-file` support. Do not run a live example without the
 user's Vercel credential and explicit request.
 
-- [ ] **Step 5: Mark the plan complete and commit verification state**
+- [x] **Step 5: Mark the plan complete and commit verification state**
 
 Change every completed checkbox in this plan from `[ ]` to `[x]`, then run:
 
@@ -730,15 +729,15 @@ git status --short
 
 Expected: the commit succeeds and the working tree is clean.
 
-- [ ] **Step 6: Push only after reviewing the final commit range**
+- [x] **Step 6: Push only after reviewing the final commit range**
 
 Run:
 
 ```bash
 git log --oneline origin/main..HEAD
 git diff --stat origin/main...HEAD
-git push origin main
+git push -u origin feat/vercel-examples
 ```
 
 Expected: the design, plan, example implementation, tests, and documentation are
-pushed to the personal `judge` repository on `main`.
+pushed to the personal `judge` repository on the reviewable feature branch.
