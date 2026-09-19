@@ -697,6 +697,8 @@ jobs:
       mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -719,6 +721,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -756,6 +760,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -831,7 +837,9 @@ version to npm, creates the Git tag, and creates the GitHub release.
 
 Release jobs run fresh `pnpm install --frozen-lockfile` installs without a
 dependency cache. pnpm runs every project command. The release script uses npm
-only for its internal `npm publish --ignore-scripts` OIDC registry upload.
+only for its internal `npm publish --ignore-scripts` OIDC registry upload after
+the exact version returns 404. An exact matching version skips upload and still
+emits Changesets tag metadata; every other registry result fails closed.
 
 ## GitHub automation apps
 
@@ -874,9 +882,10 @@ private key, and two repository permissions before rerunning the workflow. If
 publishing fails after the release pull request merged, correct the npm trusted
 publisher and rerun the failed publish job; do not create another version bump.
 
-If `npm publish --ignore-scripts` succeeds but tag creation fails, verify that
-the version exists on the npm registry, create or repair the matching Git tag,
-and rerun only after reconciling the release state.
+If `npm publish --ignore-scripts` succeeds but tag creation fails, rerun the
+failed publish job. The retry is safe because the helper confirms the exact
+published package name and version before skipping upload and emitting tag
+metadata. A mismatch or malformed registry response fails closed.
 ```
 
 - [ ] **Step 6: Verify release automation and docs**

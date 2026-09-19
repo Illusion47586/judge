@@ -60,9 +60,13 @@ major releases. `.changeset/config.json` will use:
 
 Package scripts will expose clear entry points for creating a Changeset,
 versioning packages, checking status, and publishing. pnpm runs all project
-commands. The publish script builds, uses `npm publish --ignore-scripts` only
-for the OIDC registry upload, and then invokes `pnpm exec changeset git-tag` so
-the Changesets v2 action receives release metadata through `CHANGESETS_OUTPUT`.
+commands. The publish script builds and invokes a Node release helper. The
+helper queries the exact package version from the public npm registry, uses
+`npm publish --ignore-scripts` only when that lookup returns 404, and accepts a
+200 only when its name and version match exactly. It fails closed otherwise.
+After a successful upload or exact existing-version confirmation, it invokes
+`pnpm exec changeset git-tag` so the Changesets v2 action receives release
+metadata through `CHANGESETS_OUTPUT`.
 
 Every ordinary pull request must add one new `.changeset/*.md` file. A change
 that should not release the package must still add an explicit empty Changeset,
@@ -137,8 +141,10 @@ stay separated:
 Release jobs run a fresh `pnpm install --frozen-lockfile` and restore no
 dependency cache. pnpm runs all project commands. The final registry transport
 is the sole exception: `npm publish --ignore-scripts` uses npm trusted
-publishing, after which `pnpm exec changeset git-tag` reports release metadata
-to the Changesets v2 publish action. The workflow uses a GitHub-hosted runner,
+publishing only after the exact version returns 404. An exact existing version
+skips upload, while mismatched or malformed metadata fails closed. After either
+safe path, `pnpm exec changeset git-tag` reports release metadata to the
+Changesets v2 publish action. The workflow uses a GitHub-hosted runner,
 a Node/npm version that supports npm trusted publishing, and `registry-url` for
 npm. It defines no npm token and has no token fallback.
 

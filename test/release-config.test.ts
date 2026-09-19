@@ -66,7 +66,7 @@ test("package is public and exposes release commands", () => {
   assert.equal(scripts["version-packages"], "changeset version");
   assert.equal(
     scripts.release,
-    "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag"
+    "pnpm build && node scripts/publish-release.ts"
   );
 });
 

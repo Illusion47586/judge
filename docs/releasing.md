@@ -8,7 +8,11 @@ version to the npm registry, creates the Git tag, and creates the GitHub release
 
 Release jobs run fresh `pnpm install --frozen-lockfile` installs without a
 dependency cache. pnpm runs every project command. The release script uses npm
-only for its internal `npm publish --ignore-scripts` OIDC registry upload.
+only for its internal `npm publish --ignore-scripts` OIDC registry upload. The
+release helper first queries the exact package version on the public registry.
+It uploads only after a 404, accepts only matching package metadata after a
+200, and fails closed for every other result. After either a successful upload
+or confirmation of the exact existing version, it runs Changesets tag reporting.
 
 ## GitHub automation apps
 
@@ -50,6 +54,7 @@ private key, and repository permissions before rerunning the workflow. If
 publishing fails after the release pull request merged, correct the npm trusted
 publisher and rerun the failed publish job; do not create another version bump.
 
-If `npm publish --ignore-scripts` succeeds but tag creation fails, verify that
-the version exists on the npm registry, create or repair the matching Git tag,
-and rerun only after reconciling the release state.
+If `npm publish --ignore-scripts` succeeds but tag creation fails, rerun the
+failed publish job. The retry is safe because the helper confirms the exact
+published package name and version before skipping upload and emitting tag
+metadata. A mismatch or malformed registry response fails closed.

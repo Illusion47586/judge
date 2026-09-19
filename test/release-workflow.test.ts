@@ -3,74 +3,154 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/release.yml", "utf8");
-const SELECT_MODE_ACTION = /changesets\/action\/select-mode@v2\.1\.2/u;
-const VERSION_ACTION = /changesets\/action\/version@v2\.1\.2/u;
-const PUBLISH_ACTION = /changesets\/action\/publish@v2\.1\.2/u;
-const APP_TOKEN_ACTION = /actions\/create-github-app-token@v3\.2\.0/u;
-const APP_CLIENT_ID = /RELEASE_APP_CLIENT_ID/u;
-const APP_PRIVATE_KEY = /RELEASE_APP_PRIVATE_KEY/u;
+const EMPTY_DEFAULT_PERMISSIONS = /^permissions: \{\}$/mu;
+const CHECKOUT_WITHOUT_CREDENTIALS = `- uses: actions/checkout@v6
+        with:
+          persist-credentials: false`;
+const NO_RELEASE_TOKEN = /NPM_TOKEN|NODE_AUTH_TOKEN/u;
+const NO_DEPENDENCY_CACHE = /actions\/cache|restore-keys:/u;
+const NO_NPM_RUNNER = /\bnpm\s+(?:ci|install|run|pack|test)\b/u;
+const NON_SELECT_ACTION = /changesets\/action\/(?:version|publish)/u;
+const NON_VERSION_ACTION = /changesets\/action\/(?:select-mode|publish)/u;
+const NON_PUBLISH_ACTION = /changesets\/action\/(?:select-mode|version)/u;
 const APP_TOKEN_INPUT =
   /github-token: \$\{\{ steps\.app-token\.outputs\.token \}\}/u;
-const VERSION_SCRIPT = /script: pnpm version-packages/u;
-const RELEASE_SCRIPT = /script: pnpm release/u;
-const PNPM_SETUP = /uses: pnpm\/action-setup@v6/gu;
-const FROZEN_INSTALL = /run: pnpm install --frozen-lockfile/gu;
-const ACTIONS_CACHE = /actions\/cache/u;
-const RESTORE_KEYS = /restore-keys:/u;
-const OIDC_PERMISSION = /id-token: write/u;
-const NPM_REGISTRY = /registry-url: "https:\/\/registry\.npmjs\.org"/u;
-const PACKAGE_MANAGER_CACHE = /package-manager-cache: false/u;
-const NPM_TOKEN = /NPM_TOKEN|NODE_AUTH_TOKEN/u;
-const NPM_RUNNER = /\bnpm\s+(?:ci|install|run|pack|test)\b/u;
-const EMPTY_DEFAULT_PERMISSIONS = /^permissions: \{\}$/mu;
-const JOB_CONTENTS_READ = /^ {6}contents: read$/gmu;
-const JOB_CONTENTS_WRITE = /^ {6}contents: write$/gmu;
-const JOB_ID_TOKEN_WRITE = /^ {6}id-token: write$/gmu;
-const APP_CONTENTS_WRITE = /^ {10}permission-contents: write$/gmu;
-const APP_PULL_REQUESTS_WRITE = /^ {10}permission-pull-requests: write$/gmu;
 const GITHUB_TOKEN_INPUT = /github-token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/u;
 
-test("release workflow separates selection, versioning, and publishing", () => {
-  assert.match(workflow, SELECT_MODE_ACTION);
-  assert.match(workflow, VERSION_ACTION);
-  assert.match(workflow, PUBLISH_ACTION);
-  assert.match(workflow, APP_TOKEN_ACTION);
-  assert.match(workflow, APP_CLIENT_ID);
-  assert.match(workflow, APP_PRIVATE_KEY);
-  assert.match(workflow, APP_TOKEN_INPUT);
-  assert.match(workflow, VERSION_SCRIPT);
-  assert.match(workflow, RELEASE_SCRIPT);
+const jobBlock = (name: string, nextName?: string): string => {
+  const marker = `  ${name}:\n`;
+  const start = workflow.indexOf(marker);
+  assert.notEqual(start, -1, `${name} job is missing`);
+  const end =
+    nextName === undefined
+      ? workflow.length
+      : workflow.indexOf(`  ${nextName}:\n`);
+  assert.notEqual(end, -1, `${nextName} job is missing`);
+  return workflow.slice(start, end);
+};
+
+const assertOrdered = (block: string, fragments: readonly string[]): void => {
+  let previous = -1;
+  for (const fragment of fragments) {
+    const index = block.indexOf(fragment);
+    assert.ok(index > previous, `${fragment} is missing or out of order`);
+    previous = index;
+  }
+};
+
+const jobPermissions = (block: string): string[] => {
+  const lines = block.split("\n");
+  const start = lines.indexOf("    permissions:");
+  assert.notEqual(start, -1, "job permissions are missing");
+  const permissions: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!line.startsWith("      ")) {
+      break;
+    }
+    permissions.push(line.trim());
+  }
+  return permissions;
+};
+
+const jobRouting = (block: string): string[] =>
+  block
+    .split("\n")
+    .filter(
+      (line) => line.startsWith("    if:") || line.startsWith("    needs:")
+    )
+    .map((line) => line.trim());
+
+test("select-mode has read-only permissions and an isolated setup", () => {
+  const block = jobBlock("select-mode", "version");
+
   assert.match(workflow, EMPTY_DEFAULT_PERMISSIONS);
-  assert.equal(workflow.match(JOB_CONTENTS_READ)?.length, 2);
-  assert.equal(workflow.match(APP_CONTENTS_WRITE)?.length, 1);
-  assert.equal(workflow.match(APP_PULL_REQUESTS_WRITE)?.length, 1);
+  assert.deepEqual(jobPermissions(block), ["contents: read"]);
+  assert.deepEqual(jobRouting(block), []);
+  assert.equal(block.includes(CHECKOUT_WITHOUT_CREDENTIALS), true);
+  assertOrdered(block, [
+    "actions/checkout@v6",
+    "pnpm/action-setup@v6",
+    "actions/setup-node@v6",
+    "pnpm install --frozen-lockfile",
+    "pnpm build",
+    "changesets/action/select-mode@v2.1.2",
+  ]);
+  assert.doesNotMatch(block, NON_SELECT_ACTION);
 });
 
-test("every release job sets up pinned pnpm and installs fresh", () => {
-  assert.equal(workflow.match(PNPM_SETUP)?.length, 3);
-  assert.equal(workflow.match(FROZEN_INSTALL)?.length, 3);
-  assert.doesNotMatch(workflow, ACTIONS_CACHE);
-  assert.doesNotMatch(workflow, RESTORE_KEYS);
+test("version uses only read permissions plus its short-lived app token", () => {
+  const block = jobBlock("version", "publish");
+
+  assert.deepEqual(jobRouting(block), [
+    "if: needs.select-mode.outputs.mode == 'version'",
+    "needs: select-mode",
+  ]);
+  assert.deepEqual(jobPermissions(block), ["contents: read"]);
+  assert.equal(block.includes(CHECKOUT_WITHOUT_CREDENTIALS), true);
+  assert.equal(block.includes("permission-contents: write"), true);
+  assert.equal(block.includes("permission-pull-requests: write"), true);
+  assert.match(block, APP_TOKEN_INPUT);
+  assert.equal(block.includes("script: pnpm version-packages"), true);
+  assertOrdered(block, [
+    "actions/checkout@v6",
+    "pnpm/action-setup@v6",
+    "actions/setup-node@v6",
+    "pnpm install --frozen-lockfile",
+    "pnpm build",
+    "actions/create-github-app-token@v3.2.0",
+    "changesets/action/version@v2.1.2",
+  ]);
+  assert.doesNotMatch(block, NON_VERSION_ACTION);
 });
 
-test("publishing is OIDC-only and fails closed", () => {
-  assert.match(workflow, OIDC_PERMISSION);
-  assert.match(workflow, NPM_REGISTRY);
-  assert.match(workflow, PACKAGE_MANAGER_CACHE);
-  assert.match(workflow, GITHUB_TOKEN_INPUT);
-  assert.equal(workflow.match(JOB_CONTENTS_WRITE)?.length, 1);
-  assert.equal(workflow.match(JOB_ID_TOKEN_WRITE)?.length, 1);
-  assert.doesNotMatch(workflow, NPM_TOKEN);
-  assert.doesNotMatch(workflow, NPM_RUNNER);
+test("publish alone receives OIDC and contents-write permissions", () => {
+  const block = jobBlock("publish");
+
+  assert.deepEqual(jobRouting(block), [
+    "if: needs.select-mode.outputs.mode == 'publish'",
+    "needs: select-mode",
+  ]);
+  assert.deepEqual(jobPermissions(block), [
+    "contents: write",
+    "id-token: write",
+  ]);
+  assert.equal(block.includes(CHECKOUT_WITHOUT_CREDENTIALS), true);
+  assert.equal(
+    block.includes('registry-url: "https://registry.npmjs.org"'),
+    true
+  );
+  assert.equal(block.includes("package-manager-cache: false"), true);
+  assert.match(block, GITHUB_TOKEN_INPUT);
+  assert.equal(block.includes("script: pnpm release"), true);
+  assertOrdered(block, [
+    "actions/checkout@v6",
+    "pnpm/action-setup@v6",
+    "actions/setup-node@v6",
+    "pnpm install --frozen-lockfile",
+    "changesets/action/publish@v2.1.2",
+  ]);
+  assert.doesNotMatch(block, NON_PUBLISH_ACTION);
 });
 
-test("the inert release script preserves Changesets v2 output reporting", () => {
+test("release jobs install fresh and publishing has no token fallback", () => {
+  assert.equal(workflow.split("uses: pnpm/action-setup@v6").length - 1, 3);
+  assert.equal(
+    workflow.split("run: pnpm install --frozen-lockfile").length - 1,
+    3
+  );
+  assert.equal(workflow.split("persist-credentials: false").length - 1, 3);
+  assert.doesNotMatch(workflow, NO_DEPENDENCY_CACHE);
+  assert.doesNotMatch(workflow, NO_RELEASE_TOKEN);
+  assert.doesNotMatch(workflow, NO_NPM_RUNNER);
+});
+
+test("the inert release script delegates idempotent publishing to Node", () => {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
     scripts: Record<string, string>;
   };
 
   assert.equal(
     packageJson.scripts.release,
-    "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag"
+    "pnpm build && node scripts/publish-release.ts"
   );
 });

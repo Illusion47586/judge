@@ -69,7 +69,7 @@
     "lint": "ultracite check",
     "prepack": "pnpm build",
     "prepare": "node .husky/install.mjs",
-    "release": "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag",
+    "release": "pnpm build && node scripts/publish-release.ts",
     "test": "node --test --test-concurrency=1",
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
     "test:unit": "node --test --test-concurrency=1",
