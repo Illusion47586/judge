@@ -4,7 +4,7 @@
 
 **Goal:** Make pnpm 12.4.2 Judge's reproducible package manager and command runner everywhere except the final npm OIDC registry upload.
 
-**Architecture:** `package.json` pins pnpm and `pnpm-lock.yaml` becomes the only dependency lockfile. Local scripts, hooks, tests, CI, and Changesets orchestration run through pnpm; the release script delegates only the registry upload to `npm publish --ignore-scripts`, then reports tags through the Changesets CLI.
+**Architecture:** `package.json` pins pnpm and `pnpm-lock.yaml` becomes the only dependency lockfile. Local scripts, hooks, tests, CI, and Changesets orchestration run through pnpm; an idempotent Node release helper delegates only an absent version's registry upload to `npm publish --ignore-scripts`, then reports tags through the Changesets CLI.
 
 **Tech Stack:** Node.js 22.18.0 and 24, pnpm 12.4.2, TypeScript 7, Node test runner, Husky 9, Commitlint 21, Changesets CLI 3, Changesets Action 2, GitHub Actions.
 
@@ -45,7 +45,7 @@
 
 **Interfaces:**
 - Consumes: existing package scripts, Husky hooks, Changesets configuration, and package contract tests.
-- Produces: exact `packageManager: "pnpm@12.4.2"`, `pnpm-lock.yaml`, pnpm-only project commands, and release script `pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag`.
+- Produces: exact `packageManager: "pnpm@12.4.2"`, `pnpm-lock.yaml`, pnpm-only project commands, and release script `pnpm build && node scripts/publish-release.ts`.
 
 - [ ] **Step 1: Write the failing package-manager contract test**
 
@@ -88,7 +88,7 @@ test("package scripts use pnpm except for the OIDC upload", () => {
 
   assert.equal(
     scripts.release,
-    "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag"
+    "pnpm build && node scripts/publish-release.ts"
   );
 
   for (const [name, command] of Object.entries(scripts)) {
@@ -151,7 +151,7 @@ Replace the affected scripts with these exact values while preserving all other 
     "lint": "ultracite check",
     "prepack": "pnpm build",
     "prepare": "node .husky/install.mjs",
-    "release": "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag",
+    "release": "pnpm build && node scripts/publish-release.ts",
     "test": "node --test --test-concurrency=1",
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
     "test:unit": "node --test --test-concurrency=1",
@@ -382,6 +382,8 @@ Expected: commit succeeds through pnpm-based local hooks.
 **Files:**
 - Create: `.github/workflows/release.yml`
 - Create: `test/release-workflow.test.ts`
+- Create: `scripts/publish-release.ts`
+- Create: `test/publish-release.test.ts`
 - Create: `CONTRIBUTING.md`
 - Create: `docs/releasing.md`
 - Modify: `docs/superpowers/specs/2026-09-19-release-and-commit-governance-design.md`
@@ -389,7 +391,9 @@ Expected: commit succeeds through pnpm-based local hooks.
 
 **Interfaces:**
 - Consumes: Task 1's `version-packages` and `release` scripts and Task 2's pnpm CI conventions.
-- Produces: least-privilege Changesets v2 release jobs, npm OIDC upload through the one approved exception, and pnpm contributor/operator instructions.
+- Produces: least-privilege Changesets v2 release jobs, an idempotent npm OIDC
+  upload helper with exact Changesets output reconciliation, and pnpm
+  contributor/operator instructions.
 
 - [ ] **Step 1: Write the failing release workflow contract test**
 
@@ -552,7 +556,43 @@ jobs:
 
 Do not run this workflow locally and do not invoke `pnpm release` during implementation.
 
-- [ ] **Step 4: Add pnpm contributor guidance without touching README files**
+- [ ] **Step 4: Implement and test the idempotent release helper**
+
+Create `scripts/publish-release.ts` with exported, dependency-injected release
+logic and an import-safe CLI guard. It must:
+
+1. validate nonempty package name and version from `package.json`;
+2. fetch the exact encoded package/version endpoint from the public npm registry;
+3. run `npm` with argument array `["publish", "--ignore-scripts"]` only for a
+   404 response;
+4. for a 200 response, validate an exact name/version match and skip upload;
+5. fail closed on network errors, other statuses, or malformed/mismatched data;
+6. run `pnpm` with `["exec", "changeset", "git-tag"]` only after a successful
+   upload or exact existing-version confirmation; and
+7. when `CHANGESETS_OUTPUT` exists, preserve one exact
+   `{ "type": "git-tag", "tag": "v<version>", "packageName": "<name>" }`
+   event, append it when Changesets emits none for an existing tag, and reject
+   malformed, conflicting, or duplicate events without rewriting them.
+
+Use `spawn` with `shell: false` for commands. When `CHANGESETS_OUTPUT` is absent,
+do not create an output file.
+
+Create `test/publish-release.test.ts` with executable tests for absent-version
+publish/tag, exact-existing skip/tag, mismatched and malformed metadata,
+unexpected status, network failure, publish failure without tagging, scoped URL
+encoding, missing output environment, exact event preservation, existing-tag
+empty-output reconciliation, and malformed/conflicting/duplicate output.
+
+Run:
+
+```bash
+node --test test/publish-release.test.ts test/release-workflow.test.ts test/package-manager.test.ts
+```
+
+Expected: all helper and workflow contracts pass without contacting the registry
+or invoking a real publish command.
+
+- [ ] **Step 5: Add pnpm contributor guidance without touching README files**
 
 Create `CONTRIBUTING.md` with:
 
@@ -596,7 +636,7 @@ Every pull request must include an explicit release decision.
 Commit the generated `.changeset/*.md` file with the pull request.
 ```
 
-- [ ] **Step 5: Add pnpm release operator guidance without touching README files**
+- [ ] **Step 6: Add pnpm release operator guidance without touching README files**
 
 Create `docs/releasing.md`:
 
@@ -610,8 +650,9 @@ Merges to `main` accumulate Changesets. The Release workflow creates or updates
 version to the npm registry, creates the Git tag, and creates the GitHub release.
 
 Release jobs run fresh `pnpm install --frozen-lockfile` installs without a
-dependency cache. pnpm runs every project command. The release script uses npm
-only for its internal `npm publish --ignore-scripts` OIDC registry upload.
+dependency cache. pnpm runs every project command. The idempotent release helper
+uses npm only for an absent version's internal
+`npm publish --ignore-scripts` OIDC registry upload.
 
 ## GitHub automation apps
 
@@ -653,12 +694,13 @@ private key, and repository permissions before rerunning the workflow. If
 publishing fails after the release pull request merged, correct the npm trusted
 publisher and rerun the failed publish job; do not create another version bump.
 
-If `npm publish --ignore-scripts` succeeds but tag creation fails, verify that
-the version exists on the npm registry, create or repair the matching Git tag,
-and rerun only after reconciling the release state.
+If `npm publish --ignore-scripts` succeeds but tag creation fails, rerun the
+failed publish job. The helper confirms the exact package name and version on
+the public registry, skips the immutable upload, and emits the Changesets tag
+metadata. It fails closed if the registry response does not match exactly.
 ```
 
-- [ ] **Step 6: Align the active release design and remaining plan steps**
+- [ ] **Step 7: Align the active release design and remaining plan steps**
 
 In `docs/superpowers/specs/2026-09-19-release-and-commit-governance-design.md`, update executable install, check, build, pack, hook, and release commands to pnpm. Preserve npm-registry terminology and state explicitly that the final OIDC transport is `npm publish --ignore-scripts`.
 
@@ -676,10 +718,12 @@ Replace the release command description with:
 
 ```md
 Release jobs run a fresh `pnpm install --frozen-lockfile` and restore no
-dependency cache. pnpm runs all project commands. The final registry transport
-is the sole exception: `npm publish --ignore-scripts` uses npm trusted
-publishing, after which `pnpm exec changeset git-tag` reports release metadata
-to the Changesets v2 publish action.
+dependency cache. pnpm runs all project commands. The idempotent release helper
+queries the public registry for the exact local version, uses
+`npm publish --ignore-scripts` through trusted publishing only when absent, and
+then uses `pnpm exec changeset git-tag` to report release metadata to the
+Changesets v2 publish action. A retry skips the upload only after validating an
+exact registry name/version match.
 ```
 
 In `docs/superpowers/plans/2026-09-19-release-and-commit-governance.md`:
@@ -702,7 +746,7 @@ Use this exact top-level note:
 
 Do not edit earlier completed plans or any README file.
 
-- [ ] **Step 7: Verify release contracts and documentation**
+- [ ] **Step 8: Verify release contracts and documentation**
 
 Run:
 
@@ -717,7 +761,7 @@ pnpm pack --dry-run
 
 Expected: release and package-manager contracts pass, no workflow contains a publication token, no README is changed, and the full package gates pass without publishing.
 
-- [ ] **Step 8: Commit release automation and documentation**
+- [ ] **Step 9: Commit release automation and documentation**
 
 ```bash
 git add .github/workflows/release.yml test/release-workflow.test.ts CONTRIBUTING.md docs/releasing.md docs/superpowers/specs/2026-09-19-release-and-commit-governance-design.md docs/superpowers/plans/2026-09-19-release-and-commit-governance.md

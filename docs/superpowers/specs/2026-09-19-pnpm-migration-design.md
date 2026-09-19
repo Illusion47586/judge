@@ -14,10 +14,10 @@ exact pnpm version in `package.json` and replace `package-lock.json` with
 
 The only exception is the final upload to the npm registry. npm trusted
 publishing requires an npm CLI version with OIDC support, while Changesets
-automatically delegates to `pnpm publish` when it detects a pnpm project. The
-release script will therefore be invoked through pnpm but will use `npm publish`
-only for that final registry transport. No npm command will install dependencies,
-run project scripts, pack the project, or serve as a contributor-facing runner.
+automatically delegates to `pnpm publish` when it detects a pnpm project. A
+repository-owned release helper will therefore use `npm publish` only for that
+final registry transport. No npm command will install dependencies, run project
+scripts, pack the project, or serve as a contributor-facing runner.
 
 README files are explicitly outside the scope of this migration.
 
@@ -113,15 +113,29 @@ The release command is entered through pnpm and performs these operations in
 order:
 
 1. build the package through pnpm;
-2. execute `npm publish` as the sole npm CLI exception, using npm trusted
-   publishing and the GitHub Actions OIDC identity; and
-3. execute `pnpm exec changeset git-tag`.
+2. query the public npm registry for the exact local package name and version;
+3. when the exact version is absent, execute `npm publish --ignore-scripts` as
+   the sole npm CLI exception using the GitHub Actions OIDC identity;
+4. when the registry already contains the exact matching name and version, skip
+   the immutable upload; and
+5. after either a successful upload or an exact existing-version confirmation,
+   execute `pnpm exec changeset git-tag`.
+
+The helper fails closed on network errors, unexpected registry statuses,
+malformed metadata, name/version mismatches, or publish failures. It invokes
+commands with argument arrays rather than a shell. This makes release retries
+idempotent when npm accepted a version but tag or GitHub-release creation failed:
+the retry confirms that exact public version and continues to emit tag metadata.
 
 The Changesets action supplies `CHANGESETS_OUTPUT` to the release command.
-`changeset git-tag` writes the package tag event to that output, allowing the
-Changesets v2 publish action to identify the published package, push the tag,
-and create the GitHub release. If the upload or tag generation fails, the job
-fails and does not report a successful complete release.
+`changeset git-tag` normally writes the package tag event to that output. If an
+exact tag already exists and the CLI emits no event, the helper appends the
+single expected root-package event itself. It preserves one exact event and
+fails closed on malformed, conflicting, or duplicate events. This allows the
+Changesets v2 publish action to identify the published package, tolerate an
+already-pushed tag, and create a missing GitHub release on retry. If the upload,
+tag generation, or output reconciliation fails, the job does not report a
+successful complete release.
 
 The publish job must use Node 24 with an npm CLI version new enough for trusted
 publishing, a GitHub-hosted runner, `id-token: write`, and no long-lived npm
@@ -152,7 +166,9 @@ Automated tests will verify:
 - CI cache keys hash `package.json` and `pnpm-lock.yaml` and remain exact per
   OS, architecture, and Node version;
 - release jobs perform uncached frozen installs;
-- the release command writes Changesets tag metadata after publishing;
+- the release helper publishes an absent version, skips an exact existing
+  version, rejects ambiguous registry state, and writes Changesets tag metadata
+  only after a successful upload or exact confirmation;
 - production-only isolated installation succeeds; and
 - package contents and exports remain unchanged after packing.
 
@@ -171,7 +187,8 @@ and Ultracite doctor through pnpm on the supported Node versions.
 - An invalid or unavailable OIDC identity causes `npm publish` to fail without a
   token fallback.
 - If publication succeeds but tag generation fails, the release job remains
-  failed so maintainers can reconcile the published version and tag explicitly.
+  failed; rerunning confirms the exact public version and reconciles the tag
+  event without attempting to republish the immutable version.
 
 ## References
 
