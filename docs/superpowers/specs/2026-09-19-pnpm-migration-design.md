@@ -38,7 +38,7 @@ README files are explicitly outside the scope of this migration.
 - Changing Judge's public API or runtime behavior.
 - Changing the package name, registry, release versioning policy, or supported
   Node versions.
-- Introducing a pnpm workspace solely for this single-package repository.
+- Adding additional workspace packages or multi-package workspace behavior.
 - Rewriting completed historical implementation plans to make past execution
   appear pnpm-based.
 - Publishing a package during the migration.
@@ -58,6 +58,12 @@ The repository will contain `pnpm-lock.yaml` and will not contain
 `package-lock.json`. All dependency changes must update the pnpm lockfile.
 CI installs dependencies with `pnpm install --frozen-lockfile`, causing stale or
 inconsistent manifests to fail instead of mutating the lockfile.
+
+pnpm 12's project-level settings live in `pnpm-workspace.yaml`, even for a
+single root package. Judge will use that file only for exact, version-specific
+`minimumReleaseAgeExclude` entries required by already-approved dependencies.
+It will not declare additional workspace packages or disable the default
+minimum-release-age protection globally.
 
 Package scripts will invoke sibling scripts with pnpm. This includes build,
 check, example, prepack, release, and type-contract chains. Direct binaries such

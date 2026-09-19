@@ -12,6 +12,8 @@
 
 - Pin exactly `pnpm@12.4.2` in `package.json`.
 - Keep `pnpm-lock.yaml`; remove and reject `package-lock.json`.
+- Keep `pnpm-workspace.yaml` configuration-only, with no `packages` field and
+  only exact version-specific minimum-release-age exceptions.
 - Use pnpm for installs, project scripts, hooks, tests, examples, packaging, CI, and release orchestration.
 - Allow npm only for the final `npm publish --ignore-scripts` OIDC registry transport.
 - Keep Node.js support at `>=22.18.0`; CI covers Node 22.18.0 and Node 24.
@@ -29,6 +31,7 @@
 **Files:**
 - Create: `test/package-manager.test.ts`
 - Create: `pnpm-lock.yaml` through pnpm
+- Create: `pnpm-workspace.yaml` through pnpm with exact release-age exceptions
 - Modify: `package.json`
 - Modify: `.husky/pre-commit`
 - Modify: `.husky/commit-msg`
@@ -49,20 +52,16 @@ Create `test/package-manager.test.ts`:
 
 ```ts
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const readJson = (file: string): Record<string, unknown> =>
   JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
 
-const executableFiles = [
+const repositoryCommandFiles = [
   ".husky/pre-commit",
   ".husky/commit-msg",
   "scripts/check-changeset.ts",
-  ...readdirSync(".github/workflows").map((file) =>
-    join(".github/workflows", file)
-  ),
 ];
 
 test("repository pins pnpm and has one lockfile", () => {
@@ -71,6 +70,15 @@ test("repository pins pnpm and has one lockfile", () => {
   assert.equal(packageJson.packageManager, "pnpm@12.4.2");
   assert.equal(existsSync("pnpm-lock.yaml"), true);
   assert.equal(existsSync("package-lock.json"), false);
+});
+
+test("pnpm safety exceptions are exact and do not add workspace packages", () => {
+  const workspace = readFileSync("pnpm-workspace.yaml", "utf8");
+
+  assert.doesNotMatch(workspace, /^packages:/mu);
+  assert.match(workspace, /@ai-sdk\/gateway@4\.0\.87/u);
+  assert.match(workspace, /@ai-sdk\/provider-utils@5\.0\.45/u);
+  assert.match(workspace, /ai@7\.0\.107/u);
 });
 
 test("package scripts use pnpm except for the OIDC upload", () => {
@@ -90,10 +98,10 @@ test("package scripts use pnpm except for the OIDC upload", () => {
   }
 });
 
-test("maintained executable configuration has no npm runner commands", () => {
+test("hooks and repository scripts have no npm runner commands", () => {
   const forbidden = /\b(?:npm|npx)\s+(?:ci|exec|install|pack|run|test)\b/u;
 
-  for (const file of executableFiles) {
+  for (const file of repositoryCommandFiles) {
     assert.doesNotMatch(readFileSync(file, "utf8"), forbidden, file);
   }
 });
@@ -173,6 +181,16 @@ test ! -e package-lock.json
 
 Expected: version is `12.4.2`, `pnpm-lock.yaml` exists, and `package-lock.json` is absent.
 
+Retain the generated `pnpm-workspace.yaml` only with these exact entries and no
+`packages` field:
+
+```yaml
+minimumReleaseAgeExclude:
+  - "@ai-sdk/gateway@4.0.87"
+  - "@ai-sdk/provider-utils@5.0.45"
+  - "ai@7.0.107"
+```
+
 - [ ] **Step 5: Migrate hooks, diagnostics, and subprocess tests**
 
 Set `.husky/pre-commit` to:
@@ -229,7 +247,7 @@ Expected: all focused tests, lint, and typecheck pass. No package is published.
 - [ ] **Step 7: Commit the package-manager contract**
 
 ```bash
-git add package.json pnpm-lock.yaml package-lock.json .husky/pre-commit .husky/commit-msg scripts/check-changeset.ts test/package-manager.test.ts test/release-config.test.ts test/package-isolation.test.ts test/package-exports.test.ts test/jsdoc.test.ts
+git add package.json pnpm-lock.yaml pnpm-workspace.yaml package-lock.json .husky/pre-commit .husky/commit-msg scripts/check-changeset.ts test/package-manager.test.ts test/release-config.test.ts test/package-isolation.test.ts test/package-exports.test.ts test/jsdoc.test.ts
 git commit -m "build: migrate package management to pnpm"
 ```
 
@@ -246,6 +264,9 @@ Expected: the pnpm-based hooks pass and the commit records the lockfile replacem
 **Interfaces:**
 - Consumes: Task 1's exact `packageManager` pin and `pnpm-lock.yaml`.
 - Produces: pnpm setup, frozen installs, pnpm commands, and exact `node_modules` caches for policy and Node matrix jobs.
+
+Task 2 also extends `test/package-manager.test.ts` so its maintained-command
+scan includes every file in `.github/workflows` after those workflows migrate.
 
 - [ ] **Step 1: Rewrite the CI contract test to require pnpm**
 
