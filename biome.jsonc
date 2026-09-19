@@ -21,6 +21,27 @@
           }
         }
       }
+    },
+    {
+      "includes": ["examples/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off",
+            "noThenProperty": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["test-d/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noThenProperty": "off"
+          }
+        }
+      }
     }
   ]
 }

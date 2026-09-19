@@ -42,8 +42,18 @@
   ],
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json",
-    "check": "npm run lint && npm run typecheck && npm run test:unit",
+    "check": "npm run lint && npm run typecheck && npm run typecheck:contracts && npm run typecheck:examples && npm run test:unit",
     "clean": "node --eval \"import fs from 'node:fs'; fs.rmSync('dist', { recursive: true, force: true })\"",
+    "example:agent": "npm run build --silent && node --env-file=.env examples/09-agent-tool-routing.ts",
+    "example:all": "npm run build --silent && node scripts/run-examples.ts",
+    "example:boolean": "npm run build --silent && node --env-file=.env examples/01-boolean.ts",
+    "example:choice": "npm run build --silent && node --env-file=.env examples/03-choice.ts",
+    "example:if": "npm run build --silent && node --env-file=.env examples/02-if.ts",
+    "example:incident": "npm run build --silent && node --env-file=.env examples/08-incident-escalation.ts",
+    "example:risk": "npm run build --silent && node --env-file=.env examples/07-transaction-risk.ts",
+    "example:score": "npm run build --silent && node --env-file=.env examples/05-score.ts",
+    "example:support": "npm run build --silent && node --env-file=.env examples/06-support-triage.ts",
+    "example:switch": "npm run build --silent && node --env-file=.env examples/04-switch.ts",
     "fix": "ultracite fix",
     "lint": "ultracite check",
     "prepack": "npm run build",
@@ -51,7 +61,9 @@
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
     "test:unit": "node --test --test-concurrency=1",
     "test:watch": "node --test --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:contracts": "npm run build --silent && tsc --noEmit -p tsconfig.type-contracts.json",
+    "typecheck:examples": "npm run build --silent && tsc --noEmit -p tsconfig.examples.json"
   },
   "devDependencies": {
     "@ai-sdk/gateway": "^4.0.87",

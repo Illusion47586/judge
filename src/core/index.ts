@@ -2,6 +2,7 @@ export { createJudge } from "./client.ts";
 export {
   AbortError,
   ConfigurationError,
+  ContextLimitError,
   JudgeError,
   ProviderContractError,
   ProviderError,

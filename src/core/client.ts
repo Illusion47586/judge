@@ -150,6 +150,28 @@ const snapshotSwitchCases = <
   };
 };
 
+/**
+ * Creates a provider-neutral Judge client.
+ *
+ * @remarks The supplied provider owns remote work and billing. Judge validates
+ * every decision before returning it or invoking application callbacks.
+ *
+ * @param options - The decision provider used for every evaluation.
+ * @returns A reusable {@link JudgeClient}.
+ * @throws {@link ConfigurationError} if the provider is invalid.
+ *
+ * @example
+ * ```ts
+ * import { createJudge } from "@brkn-labs/judge/core";
+ * import { mockProvider } from "@brkn-labs/judge/mock";
+ *
+ * const judge = createJudge({
+ *   provider: mockProvider({
+ *     boolean: [{ probabilityTrue: 0.9, value: true }],
+ *   }),
+ * });
+ * ```
+ */
 export const createJudge = (options: CreateJudgeOptions): JudgeClient => {
   const provider = validateProvider(options.provider);
 

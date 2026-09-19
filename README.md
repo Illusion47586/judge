@@ -144,6 +144,53 @@ Direct TypeSafe retries are off by default. If you opt into `retry`, only HTTP
 429 and 529 are retried, and a lost response can result in more than one billed
 evaluation.
 
+## Context windows and usage limits
+
+[Jev currently advertises a 32K-token context window](https://vercel.com/ai-gateway/models/jev).
+A context window limits the serialized input accepted by one evaluation; it is
+different from a request rate limit or an account credit or quota.
+
+Judge can issue an advisory warning before large requests:
+
+```ts
+const judge = createJudge({
+  gateway,
+  contextBudget: {
+    maxTokens: 32_768,
+    warnAt: 0.8,
+    onWarning: ({ estimatedTokens, maxTokens, ratio }) => {
+      telemetry.capture("judge.context.warning", {
+        estimatedTokens,
+        maxTokens,
+        ratio,
+      });
+    },
+  },
+});
+```
+
+The estimate uses the UTF-8 size of the complete serialized Jev request. It is
+not an exact tokenizer count, and Judge never blocks a request based on the
+estimate. The provider remains authoritative; an explicit context-window
+rejection is exposed as `ContextLimitError` with code `context_limit`.
+
+Model limits can change. Confirm the current value in your provider catalog
+before configuring a production policy.
+
+## Examples
+
+The [`examples/`](examples/README.md) directory contains focused examples for
+every Judge primitive plus customer-support, transaction-risk, incident, and
+agent-routing scenarios. They all use Vercel AI Gateway.
+
+```sh
+cp .env.example .env
+npm run example:switch
+```
+
+`npm run typecheck:examples` checks every example without making remote calls.
+`npm run example:all` performs nine remote, potentially billable evaluations.
+
 ## Safety boundary
 
 Judge:

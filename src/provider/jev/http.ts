@@ -1,8 +1,10 @@
 import {
   AbortError,
+  ContextLimitError,
   ProviderContractError,
   ProviderError,
 } from "../../core/errors.ts";
+import { isContextLimitFailure } from "../../gateway/errors.ts";
 
 export const DEFAULT_MAX_RESPONSE_BYTES = 8_388_608;
 
@@ -80,6 +82,22 @@ export const errorForStatus = (status: number): ProviderError => {
   return new ProviderError(`The provider request failed with HTTP ${status}.`, {
     code,
   });
+};
+
+export const errorForResponse = async (
+  response: Response,
+  maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES
+): Promise<ProviderError> => {
+  let body: unknown;
+  try {
+    body = await readBoundedJson(response, maxResponseBytes);
+  } catch {
+    body = undefined;
+  }
+  if (isContextLimitFailure(body)) {
+    return new ContextLimitError(undefined, { cause: body });
+  }
+  return errorForStatus(response.status);
 };
 
 export const parseRetryAfter = (

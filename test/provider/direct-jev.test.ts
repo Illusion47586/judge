@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   AbortError,
   ConfigurationError,
+  ContextLimitError,
   ProviderContractError,
   ProviderError,
 } from "../../src/core/index.ts";
@@ -68,6 +69,28 @@ test("direct Jev maps stable HTTP errors without exposing response text", async 
         return true;
       });
     })
+  );
+});
+
+test("direct Jev maps an explicit provider context error", async () => {
+  const gateway = directJevGateway({ apiKey: "secret" }, () =>
+    Promise.resolve(
+      Response.json(
+        {
+          error: {
+            message: "Maximum context length exceeded.",
+            type: "context_length_exceeded",
+          },
+        },
+        { status: 422 }
+      )
+    )
+  );
+
+  await assert.rejects(
+    gateway.evaluate(request),
+    (error) =>
+      error instanceof ContextLimitError && error.code === "context_limit"
   );
 });
 

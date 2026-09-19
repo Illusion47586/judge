@@ -171,6 +171,49 @@ test("serializes before transport and rejects non-JSON context", async () => {
   assert.equal(calls, 0);
 });
 
+test("awaits a context warning before transport", async () => {
+  const events: string[] = [];
+  const provider = createJevProvider({
+    contextBudget: {
+      maxTokens: 1,
+      onWarning: async () => {
+        events.push("warning");
+        await Promise.resolve();
+        events.push("warning-complete");
+      },
+    },
+    gateway: gatewayWith(
+      { answers: { decision: { noul: 0.8, type: "noul" } } },
+      () => events.push("transport")
+    ),
+  });
+
+  await provider.boolean({ condition: "Proceed?", context: {} });
+  assert.deepEqual(events, ["warning", "warning-complete", "transport"]);
+});
+
+test("does not send when the warning callback fails", async () => {
+  const failure = new Error("telemetry unavailable");
+  let calls = 0;
+  const provider = createJevProvider({
+    contextBudget: {
+      maxTokens: 1,
+      onWarning: () => {
+        throw failure;
+      },
+    },
+    gateway: gatewayWith({}, () => {
+      calls += 1;
+    }),
+  });
+
+  await assert.rejects(
+    provider.boolean({ condition: "Proceed?", context: {} }),
+    (error) => error === failure
+  );
+  assert.equal(calls, 0);
+});
+
 test("rejects unsupported capabilities before transport", async () => {
   let calls = 0;
   const gateway = defineGateway({
