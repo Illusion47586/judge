@@ -21,6 +21,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["examples/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
     }
   ]
 }
