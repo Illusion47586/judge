@@ -22,6 +22,7 @@
 ### Task 1: Add and verify the SDK comparison
 
 **Files:**
+- Create: `.changeset/sdk-comparison-docs.md`
 - Modify: `README.md`
 - Modify: `docs/superpowers/plans/2026-09-19-sdk-comparison-readme.md`
 
@@ -94,3 +95,21 @@ Expected: only the README comparison and this tracked plan are present, with no 
 git add README.md docs/superpowers/plans/2026-09-19-sdk-comparison-readme.md
 git commit -m "docs: compare Judge with adjacent SDKs"
 ```
+
+- [x] **Step 6: Satisfy the pull-request Changeset policy**
+
+Add an empty Changeset because this documentation-only change does not require a
+package release:
+
+```markdown
+---
+---
+```
+
+Run:
+
+```bash
+node --input-type=module --eval 'const { hasChangesetDecision } = await import("./scripts/check-changeset.ts"); if (!hasChangesetDecision(["A\\t.changeset/sdk-comparison-docs.md"])) process.exit(1);'
+```
+
+Expected: the command exits successfully with no output.
