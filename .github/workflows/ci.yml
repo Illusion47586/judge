@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -31,24 +32,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-24-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-24-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install dependencies
         if: steps.node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Validate pull request commits
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: npm run commitlint -- --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+        run: pnpm commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
       - name: Validate landed commit
         if: github.event_name == 'push'
-        run: npm run commitlint -- --last --verbose
+        run: pnpm commitlint --last --verbose
       - name: Validate pull request title
         if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: printf '%s\n' "$PR_TITLE" | npm run commitlint -- --verbose
+        run: printf '%s\n' "$PR_TITLE" | pnpm commitlint --verbose
       - name: Require a Changeset decision
         if: github.event_name == 'pull_request'
         env:
@@ -69,6 +70,7 @@ jobs:
         node: ["22.18.0", "24"]
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
@@ -78,10 +80,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ matrix.node }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ matrix.node }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install dependencies
         if: steps.node-modules.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: npm run check
-      - run: npm run build
-      - run: npm pack --dry-run
+        run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+      - run: pnpm pack --dry-run

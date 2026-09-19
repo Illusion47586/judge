@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const NPM_COMMAND = /\b(?:npm|npx)\b/u;
@@ -19,6 +19,9 @@ const repositoryCommandFiles = [
   ".husky/pre-commit",
   ".husky/commit-msg",
   "scripts/check-changeset.ts",
+  ...readdirSync(".github/workflows", { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => `.github/workflows/${entry.name}`),
 ];
 
 test("repository pins pnpm and has one lockfile", () => {
