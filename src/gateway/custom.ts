@@ -59,6 +59,48 @@ const snapshotCapabilities = (value: unknown): GatewayCapabilities => {
   });
 };
 
+/**
+ * Defines a custom Jev-compatible gateway.
+ *
+ * @remarks A custom plugin's `evaluate` function may perform remote,
+ * potentially billable work. Judge does not add retries around this function;
+ * the plugin owns its transport, cancellation, timeout, and retry behavior.
+ * Capability flags are snapshotted and frozen, while `evaluate` is preserved.
+ * The callback receives native Jev state and keyed questions; its returned
+ * body remains untrusted until Judge validates the requested decisions.
+ *
+ * @param definition - Gateway identity, capabilities, model, and evaluator.
+ * @returns An immutable, validated {@link GatewayPlugin}.
+ * @throws {@link ConfigurationError} if the definition, identifiers,
+ * capabilities, or evaluator are invalid.
+ *
+ * @example
+ * ```ts
+ * import { defineGateway } from "@brkn-labs/judge/gateway/custom";
+ *
+ * const gateway = defineGateway({
+ *   id: "internal",
+ *   model: "internal/jev",
+ *   capabilities: {
+ *     batching: true,
+ *     boolean: true,
+ *     choice: true,
+ *     customHeaders: true,
+ *     jev: true,
+ *     score: true,
+ *   },
+ *   async evaluate(request, options) {
+ *     const response = await fetch("https://example.com/evaluate", {
+ *       method: "POST",
+ *       headers: { "content-type": "application/json", ...options?.headers },
+ *       body: JSON.stringify(request),
+ *       signal: options?.signal,
+ *     });
+ *     return { body: await response.json() };
+ *   },
+ * });
+ * ```
+ */
 export const defineGateway = (definition: GatewayPlugin): GatewayPlugin => {
   const candidate: unknown = definition;
   if (typeof candidate !== "object" || candidate === null) {

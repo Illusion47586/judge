@@ -11,10 +11,19 @@ import type {
 
 const DEFAULT_MODEL = "typesafe/jev";
 
+/** Configuration for {@link cloudflareGateway}. */
 export interface CloudflareGatewayOptions {
+  /** Cloudflare account identifier that owns the Workers AI request. */
   readonly accountId: string;
+  /** Cloudflare API token authorized to invoke Workers AI. */
   readonly apiToken: string;
+  /** Optional Cloudflare AI Gateway identifier for routing and observability. */
   readonly gatewayId?: string;
+  /**
+   * Default Workers AI model identifier.
+   *
+   * @defaultValue `"typesafe/jev"`
+   */
   readonly model?: string;
 }
 
@@ -45,6 +54,40 @@ const validateString = (value: unknown, name: string): string => {
   return value;
 };
 
+/**
+ * Creates a Cloudflare Workers AI adapter.
+ *
+ * @remarks Calling a Judge client with this gateway performs remote,
+ * potentially billable work. This adapter requires the optional `cloudflare`
+ * peer dependency. SDK retries are disabled to avoid hidden duplicate
+ * evaluations. Per-request headers, abort signals, and timeouts are forwarded
+ * to Cloudflare; `timeoutMs` is measured in milliseconds. Cloudflare owns
+ * model availability, rate limits, context limits, and billing.
+ *
+ * @param options - Cloudflare credentials, routing, and model configuration.
+ * @returns A reusable {@link GatewayPlugin}.
+ * @throws {@link ConfigurationError} if a required string is missing or not
+ * trimmed. Evaluation can reject with cancellation, timeout, or normalized
+ * provider errors.
+ *
+ * @example
+ * ```ts
+ * import { createJudge } from "@brkn-labs/judge";
+ * import { cloudflareGateway } from "@brkn-labs/judge/gateway/cloudflare";
+ *
+ * const judge = createJudge({
+ *   gateway: cloudflareGateway({
+ *     accountId: process.env.CLOUDFLARE_ACCOUNT_ID!,
+ *     apiToken: process.env.CLOUDFLARE_API_TOKEN!,
+ *   }),
+ * });
+ * const route = await judge.choice({
+ *   context: { ticket: "Invoice total is incorrect" },
+ *   options: ["billing", "support"],
+ *   question: "Which team should own this ticket?",
+ * });
+ * ```
+ */
 export const cloudflareGateway = (
   options: CloudflareGatewayOptions
 ): GatewayPlugin => {

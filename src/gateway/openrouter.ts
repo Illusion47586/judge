@@ -18,13 +18,37 @@ const DEFAULT_BASE_URL = "https://openrouter.ai/api";
 const DEFAULT_MODEL = "typesafe/jev-1.13";
 const TRAILING_SLASH = /\/$/u;
 
+/** Configuration for {@link openRouterGateway}. */
 export interface OpenRouterGatewayOptions {
+  /** OpenRouter API key used to authenticate remote requests. */
   readonly apiKey: string;
+  /** Optional application name sent as the `X-OpenRouter-Title` header. */
   readonly appTitle?: string;
+  /**
+   * Alternative OpenRouter API base URL; `/alpha/decisions` is appended.
+   *
+   * @defaultValue `"https://openrouter.ai/api"`
+   */
   readonly baseUrl?: string;
+  /** Optional application URL sent as the `HTTP-Referer` header. */
   readonly httpReferer?: string;
+  /**
+   * Maximum response body size in bytes before the request is rejected.
+   *
+   * @defaultValue `8_388_608`
+   */
   readonly maxResponseBytes?: number;
+  /**
+   * Default OpenRouter model identifier.
+   *
+   * @defaultValue `"typesafe/jev-1.13"`
+   */
   readonly model?: string;
+  /**
+   * OpenRouter provider-routing preferences forwarded without interpretation.
+   *
+   * @remarks This provider-specific object's shape is not a stable Judge API.
+   */
   readonly provider?: Readonly<Record<string, unknown>>;
 }
 
@@ -65,6 +89,41 @@ const endpointFor = (baseUrl: string | undefined): string => {
   }
 };
 
+/**
+ * Creates an OpenRouter Decisions adapter.
+ *
+ * @remarks Calling a Judge client with this gateway performs remote,
+ * potentially billable work. The adapter uses the host's `fetch` and has no
+ * required SDK peer. It performs one attempt and does not retry, avoiding
+ * hidden duplicate evaluations. Caller abort signals and millisecond timeouts
+ * cancel the request. Responses larger than `maxResponseBytes` are rejected.
+ * OpenRouter owns provider routing, model availability, rate limits, context
+ * limits, and billing.
+ *
+ * @param options - OpenRouter credentials, attribution, routing, and limits.
+ * @returns A reusable {@link GatewayPlugin}.
+ * @throws {@link ConfigurationError} if strings, the base URL, or the response
+ * limit are invalid. Evaluation can reject with cancellation, timeout,
+ * response-limit, transport, or provider errors.
+ *
+ * @example
+ * ```ts
+ * import { createJudge } from "@brkn-labs/judge";
+ * import { openRouterGateway } from "@brkn-labs/judge/gateway/openrouter";
+ *
+ * const judge = createJudge({
+ *   gateway: openRouterGateway({
+ *     apiKey: process.env.OPENROUTER_API_KEY!,
+ *     appTitle: "Support Router",
+ *   }),
+ * });
+ * const risk = await judge.score({
+ *   context: { transactionAmount: 9_500 },
+ *   levels: ["low", "medium", "high"],
+ *   question: "How risky is this transaction?",
+ * });
+ * ```
+ */
 export const openRouterGateway = (
   options: OpenRouterGatewayOptions
 ): GatewayPlugin => {

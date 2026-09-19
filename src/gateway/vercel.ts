@@ -14,10 +14,23 @@ import type {
 
 const DEFAULT_MODEL = "typesafe-ai/jev";
 
+/** Configuration for {@link vercelGateway}. */
 export interface VercelGatewayOptions {
+  /** Vercel AI Gateway API key used to authenticate remote requests. */
   readonly apiKey: string;
+  /**
+   * Alternative AI Gateway base URL.
+   *
+   * @defaultValue The Vercel AI Gateway SDK default endpoint.
+   */
   readonly baseUrl?: string;
+  /** Headers included with every request; per-request headers take precedence. */
   readonly headers?: Readonly<Record<string, string>>;
+  /**
+   * Default evaluation model identifier.
+   *
+   * @defaultValue `"typesafe-ai/jev"`
+   */
   readonly model?: string;
 }
 
@@ -151,6 +164,37 @@ const convertResult = (
   };
 };
 
+/**
+ * Creates a Vercel AI Gateway adapter.
+ *
+ * @remarks Calling a Judge client with this gateway performs remote,
+ * potentially billable work. This adapter requires the optional
+ * `@ai-sdk/gateway` and `ai` peer dependencies and uses the native evaluation
+ * API. It disables SDK retries to avoid hidden duplicate evaluations.
+ * Per-request abort signals and timeouts are combined; `timeoutMs` is measured
+ * in milliseconds. Vercel owns model availability, rate limits, context
+ * limits, and billing.
+ *
+ * @param options - Credentials and Vercel AI Gateway configuration.
+ * @returns A reusable {@link GatewayPlugin}.
+ * @throws {@link ConfigurationError} if a required string is missing or not
+ * trimmed. Evaluation can reject with cancellation, timeout, or normalized
+ * provider errors.
+ *
+ * @example
+ * ```ts
+ * import { createJudge } from "@brkn-labs/judge";
+ * import { vercelGateway } from "@brkn-labs/judge/gateway/vercel";
+ *
+ * const judge = createJudge({
+ *   gateway: vercelGateway({ apiKey: process.env.AI_GATEWAY_API_KEY! }),
+ * });
+ * const decision = await judge.boolean({
+ *   condition: "This support request requires urgent attention",
+ *   context: { message: "Production is unavailable" },
+ * });
+ * ```
+ */
 export const vercelGateway = (options: VercelGatewayOptions): GatewayPlugin => {
   const apiKey = validateString(options.apiKey, "apiKey");
   const model = validateString(options.model ?? DEFAULT_MODEL, "model");
