@@ -60,6 +60,7 @@ export const createJudge = (options: CreateJudgeOptions): JudgeClient => {
 export {
   AbortError,
   ConfigurationError,
+  ContextLimitError,
   JudgeError,
   ProviderContractError,
   ProviderError,

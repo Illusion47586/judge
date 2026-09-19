@@ -3,9 +3,10 @@ import type {
   ContextBudgetOptions,
   ContextBudgetWarning,
   JudgeClient,
+  ProviderError,
   ScoreDecision,
 } from "@brkn-labs/judge";
-import { createJudge } from "@brkn-labs/judge";
+import { ContextLimitError, createJudge } from "@brkn-labs/judge";
 import type { GatewayPlugin } from "@brkn-labs/judge/gateway/custom";
 
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -134,3 +135,8 @@ createJudge({
   },
   gateway,
 });
+
+const contextError: ProviderError = new ContextLimitError();
+const contextCode: string = contextError.code;
+
+export { contextCode };

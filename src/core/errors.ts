@@ -34,6 +34,15 @@ export class ProviderError extends JudgeError {
   }
 }
 
+export class ContextLimitError extends ProviderError {
+  constructor(
+    message = "The request exceeds the model context window.",
+    options?: JudgeErrorOptions
+  ) {
+    super(message, { ...options, code: "context_limit" });
+  }
+}
+
 export class ProviderContractError extends JudgeError {
   constructor(message: string, options?: JudgeErrorOptions) {
     super(message, "provider_contract_error", options);

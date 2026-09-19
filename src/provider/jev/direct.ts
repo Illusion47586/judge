@@ -8,7 +8,7 @@ import type {
 import {
   createRequestSignal,
   DEFAULT_MAX_RESPONSE_BYTES,
-  errorForStatus,
+  errorForResponse,
   type Fetcher,
   mapFetchFailure,
   parseRetryAfter,
@@ -186,7 +186,7 @@ export const directJevGateway = (
         return performAttempt(request, requestOptions, attempt + 1, startedAt);
       }
       if (!response.ok) {
-        throw errorForStatus(response.status);
+        throw await errorForResponse(response, config.maxResponseBytes);
       }
 
       const body = await readBoundedJson(response, config.maxResponseBytes);
