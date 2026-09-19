@@ -1,4 +1,4 @@
-# CI Policy, Community Templates, and SDK Positioning Design
+# CI Policy, Package Compatibility, and Contributor Experience Design
 
 ## Goal
 
@@ -13,6 +13,10 @@ and validation expectations before submitting work.
 
 Also refine the README's adjacent-SDK comparison with Judge's end-to-end typed
 decision-control-flow advantage.
+
+Finally, make the published package work in StackBlitz without requiring every
+optional gateway SDK, restore compatibility with legacy package resolvers, and
+allow callers to omit evaluation context when a decision needs no state.
 
 ## Design
 
@@ -78,6 +82,51 @@ Judge's public declaration contract and compile-time consumer tests, Vercel's
 documented typed outputs and tools, and TypeSafe AI's documented inferred answer
 types.
 
+## Optional integrations and package resolution
+
+Remove `@ai-sdk/gateway`, `ai`, and `cloudflare` from `peerDependencies`. Keep
+them in `devDependencies` so Judge's adapters continue to build and test, and
+retain their optional entries in `peerDependenciesMeta`, matching the manifest
+pattern used by packages such as Knex and Sequelize for manually installed
+integration drivers. This prevents StackBlitz and other installers from treating
+all three mutually independent adapters as prerequisites for the core package.
+
+The README will describe these packages as optional integrations rather than
+optional peers. It will show the exact install command for each adapter and make
+clear that the core, mock, custom, OpenRouter, and direct Jev entry points do not
+require an additional integration package.
+
+Add `"main": "./dist/index.js"` as a legacy root-entry fallback while retaining
+the authoritative `exports` map and `types` declaration. The package remains
+ESM-only through `"type": "module"`; no root shim and no parallel CommonJS build
+will be introduced. This supports resolvers such as StackBlitz's legacy Turbo
+resolver, which otherwise defaults to a nonexistent package-root `index.js`.
+
+A package-manifest regression test will assert that runtime SDKs are absent from
+`peerDependencies`, remain available to development, all retained peer metadata
+is optional, and `main`, `types`, and every `exports` target resolve to files
+included in the packed artifact.
+
+## Optional context
+
+Make `context` optional throughout the public decision surface:
+`DecisionProvider.boolean`, `choice`, and `score`, plus `JudgeClient.boolean`,
+`choice`, `score`, `if`, and `switch`. Supplying a context object continues to
+preserve its inferred type and existing behavior.
+
+When context is omitted, the core client passes `undefined` through the
+provider-neutral interface. The Jev provider alone normalizes that absence to
+`null` before serialization, so every Jev gateway request contains the valid
+state value `null`. Explicit `null` remains `null`, and falsy but defined values
+such as `false`, `0`, and the empty string must not be replaced. Other providers
+remain free to interpret an omitted context according to their own contract.
+
+Public compile-time tests will exercise context-free calls for all five client
+methods while preserving literal choices, narrowed callbacks, and callback
+return unions. Provider tests will assert that all three Jev operations send
+`state: null` when context is omitted and that defined falsy contexts retain
+their values.
+
 ## Files
 
 - `.github/workflows/ci.yml`: remove the push-only landed-commit step.
@@ -85,13 +134,23 @@ types.
 - `.github/ISSUE_TEMPLATE/02-feature-request.yml`: structured feature intake.
 - `.github/ISSUE_TEMPLATE/config.yml`: disable contributor blank issues.
 - `.github/pull_request_template.md`: default PR guidance and checklist.
-- `README.md`: add the end-to-end typed control-flow comparison.
+- `package.json`: remove runtime peer declarations and add the legacy root
+  entrypoint fallback.
+- `README.md`: add the end-to-end typed control-flow comparison and document
+  manual installation for optional integrations.
+- `src/core/types.ts`: make context optional across provider and client inputs.
+- `src/provider/jev/provider.ts`: map omitted context to Jev state `null`.
 - `test/ci-workflow.test.ts`: stop expecting the step and add an explicit
   regression assertion that `commitlint --last` is absent from the workflow.
 - `test/community-templates.test.ts`: lock in the GitHub template paths and
   required contribution prompts.
-- `.changeset/remove-post-merge-commitlint.md`: record an empty Changeset
-  because these repository-only changes do not require a package release.
+- `test/package-exports.test.ts`: verify manifest compatibility and packed
+  entrypoint targets.
+- `test/provider/jev-provider.test.ts`: verify omitted and falsy context state.
+- `test-d/public-contracts.test-d.ts`: verify context-free calls and preserved
+  type inference.
+- `.changeset/remove-post-merge-commitlint.md`: record a patch release for the
+  compatible public API and packaging changes.
 
 ## Verification
 
@@ -99,6 +158,9 @@ The focused workflow test must fail before the workflow edit and pass after it.
 The community-template test must fail before the templates exist and pass once
 all four files satisfy the expected contract. README wording will be checked
 against the public TypeScript contract and the existing consumer type tests.
-The final verification will run both focused tests, `pnpm lint`,
-`pnpm typecheck`, and the full repository check. The pull request must pass
-policy and both Node jobs before it is merged.
+Package tests must fail against the current peer and entrypoint metadata and pass
+after the manifest change. Compile-time contracts and focused Jev provider tests
+must fail before context becomes optional, then pass with omitted state mapped to
+`null`. The final verification will run the focused tests, `pnpm lint`,
+`pnpm typecheck`, `pnpm check`, `pnpm build`, and `pnpm pack --dry-run`. The pull
+request must pass policy and both Node jobs before it is merged.
