@@ -32,7 +32,7 @@
 - Consumes: `JudgeClient`, `ChoiceDecision`, and `ScoreDecision` from the built `@brkn-labs/judge` package.
 - Produces: `npm run typecheck:contracts`, proving exact valid inference and rejected invalid programs.
 
-- [ ] **Step 1: Create the red consumer fixture**
+- [x] **Step 1: Create the red consumer fixture**
 
 Create `test-d/public-contracts.test-d.ts` initially without suppression comments:
 
@@ -169,13 +169,13 @@ Add this script:
 "typecheck:contracts": "npm run build --silent && tsc --noEmit -p tsconfig.type-contracts.json"
 ```
 
-- [ ] **Step 2: Verify the fixture is red**
+- [x] **Step 2: Verify the fixture is red**
 
 Run: `npm run typecheck:contracts`
 
 Expected: FAIL on `sales`, impossible Boolean assignments, empty choice options, and a one-level score. Positive equality checks must not fail.
 
-- [ ] **Step 3: Turn every intentional rejection into a negative contract**
+- [x] **Step 3: Turn every intentional rejection into a negative contract**
 
 Add `@ts-expect-error` directly before each invalid line:
 
@@ -205,7 +205,7 @@ judge.choice({ context: {}, options: [], question: "Empty" });
 judge.score({ context: {}, levels: ["only"], question: "Too short" });
 ```
 
-- [ ] **Step 4: Add the contract compiler to the main gate**
+- [x] **Step 4: Add the contract compiler to the main gate**
 
 Set:
 
@@ -213,7 +213,7 @@ Set:
 "check": "npm run lint && npm run typecheck && npm run typecheck:contracts && npm run typecheck:examples && npm run test:unit"
 ```
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm run typecheck:contracts && npm run lint`
 
@@ -242,7 +242,7 @@ git commit -m "test: add public type contracts"
 - Consumes: the final `GatewayEvaluationRequest` and optional `ContextBudgetOptions`.
 - Produces: `ContextBudgetOptions`, `ContextBudgetWarning`, `estimateRequestTokens()`, `normalizeContextBudget()`, and `warnForContextBudget()`.
 
-- [ ] **Step 1: Write the failing focused unit tests**
+- [x] **Step 1: Write the failing focused unit tests**
 
 Create `test/provider/context-budget.test.ts`:
 
@@ -323,13 +323,13 @@ test("does not warn below the default threshold or without a policy", async () =
 });
 ```
 
-- [ ] **Step 2: Run the test red**
+- [x] **Step 2: Run the test red**
 
 Run: `node --test test/provider/context-budget.test.ts`
 
 Expected: FAIL because the context-budget module does not exist.
 
-- [ ] **Step 3: Define the types and implementation**
+- [x] **Step 3: Define the types and implementation**
 
 Add to `src/provider/jev/types.ts`:
 
@@ -407,7 +407,7 @@ export const warnForContextBudget = async (
 };
 ```
 
-- [ ] **Step 4: Verify the unit and add provider ordering tests**
+- [x] **Step 4: Verify the unit and add provider ordering tests**
 
 Run: `node --test test/provider/context-budget.test.ts`
 
@@ -458,7 +458,7 @@ test("does not send when the warning callback fails", async () => {
 });
 ```
 
-- [ ] **Step 5: Wire the complete request before transport**
+- [x] **Step 5: Wire the complete request before transport**
 
 In `createJevProvider()`, call `normalizeContextBudget(options.contextBudget)`
 once. Change its internal evaluation boundary to:
@@ -491,7 +491,7 @@ const evaluate = async (
 Build each Boolean, Choice, and Score request in a local constant and pass that
 same object plus `contextBudget` to `evaluate()`.
 
-- [ ] **Step 6: Expose root configuration and contracts**
+- [x] **Step 6: Expose root configuration and contracts**
 
 Add optional `contextBudget?: ContextBudgetOptions` to both root direct and
 gateway branches in `src/index.ts`, pass it into `createJevProvider()`, and
@@ -555,7 +555,7 @@ createJudge({ contextBudget: { onWarning: () => undefined }, gateway });
 createJudge({ contextBudget: { maxTokens: 32_768, onWarning: "console" }, gateway });
 ```
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run:
 
@@ -591,7 +591,7 @@ git commit -m "feat: add Jev context budget warnings"
 - Consumes: unknown nested gateway failures and bounded direct-provider error bodies.
 - Produces: `ContextLimitError`, code `context_limit`, and `isContextLimitFailure(value)`.
 
-- [ ] **Step 1: Write failing gateway tests**
+- [x] **Step 1: Write failing gateway tests**
 
 Create `test/gateway/errors.test.ts`:
 
@@ -622,13 +622,13 @@ test("does not infer context failure from status alone", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests red**
+- [x] **Step 2: Run the tests red**
 
 Run: `node --test test/gateway/errors.test.ts`
 
 Expected: FAIL because `ContextLimitError` and explicit classification do not exist.
 
-- [ ] **Step 3: Add the error and classifier**
+- [x] **Step 3: Add the error and classifier**
 
 Add to `src/core/errors.ts`:
 
@@ -684,7 +684,7 @@ Export `isContextLimitFailure(value: unknown): boolean`. Invoke it in
 mapping, throwing `new ContextLimitError(undefined, { cause })`. Map bare `413`
 to `invalid_request`, not `context_limit`.
 
-- [ ] **Step 4: Verify gateway behavior and write the direct red test**
+- [x] **Step 4: Verify gateway behavior and write the direct red test**
 
 Run:
 
@@ -725,7 +725,7 @@ Run: `node --test test/provider/direct-jev.test.ts`
 
 Expected: FAIL because direct transport discards error bodies.
 
-- [ ] **Step 5: Inspect bounded direct error bodies**
+- [x] **Step 5: Inspect bounded direct error bodies**
 
 Add to `src/provider/jev/http.ts`:
 
@@ -754,7 +754,7 @@ Import its dependencies. In `src/provider/jev/direct.ts`, replace
 throw await errorForResponse(response, config.maxResponseBytes);
 ```
 
-- [ ] **Step 6: Add the public type contract, verify, and commit**
+- [x] **Step 6: Add the public type contract, verify, and commit**
 
 Append:
 
@@ -792,7 +792,7 @@ git commit -m "feat: normalize context limit errors"
 - Consumes: the completed public API and tests.
 - Produces: user guidance and an updated pull request branch.
 
-- [ ] **Step 1: Document the limit and advisory policy**
+- [x] **Step 1: Document the limit and advisory policy**
 
 Add `## Context windows and usage limits` after Gateway setup. Include the
 complete `createJudge({ gateway, contextBudget: { maxTokens: 32_768, warnAt:
@@ -811,7 +811,7 @@ provider rejection is exposed as `ContextLimitError` with code
 before configuring production policy.
 ```
 
-- [ ] **Step 2: Run focused and full gates**
+- [x] **Step 2: Run focused and full gates**
 
 Run:
 
@@ -826,7 +826,7 @@ npm pack --dry-run
 
 Expected: all checks pass without live provider requests.
 
-- [ ] **Step 3: Verify isolation and credential safety**
+- [x] **Step 3: Verify isolation and credential safety**
 
 Run:
 
@@ -840,7 +840,7 @@ git grep -n -E 'AI_GATEWAY_API_KEY=[[:alnum:]_./+-]{16,}' -- ':!docs/superpowers
 Expected: isolation tests pass; environment files are ignored and untracked;
 the credential scan prints nothing.
 
-- [ ] **Step 4: Complete the plan and commit**
+- [x] **Step 4: Complete the plan and commit**
 
 Mark every completed checkbox `[x]`, then run:
 
@@ -852,7 +852,7 @@ git status --short
 
 Expected: clean working tree.
 
-- [ ] **Step 5: Review and update pull request 1**
+- [x] **Step 5: Review and update pull request 1**
 
 Run:
 
