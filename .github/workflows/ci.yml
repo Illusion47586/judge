@@ -42,9 +42,6 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
-      - name: Validate landed commit
-        if: github.event_name == 'push'
-        run: pnpm commitlint --last --verbose
       - name: Validate pull request title
         if: github.event_name == 'pull_request'
         env:

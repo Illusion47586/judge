@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose an improvement to Judge or its developer experience.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: Explain the problem first so proposed APIs stay grounded in a concrete use case.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Describe the limitation, who encounters it, and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or API you would like Judge to provide.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Share workarounds or other designs you considered.
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add examples, prior art, or other useful context.

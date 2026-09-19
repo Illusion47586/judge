@@ -1,4 +1,5 @@
 import type {
+  BooleanDecision,
   ChoiceDecision,
   ContextBudgetOptions,
   ContextBudgetWarning,
@@ -14,8 +15,12 @@ type Expect<T extends true> = T;
 
 declare const judge: JudgeClient;
 
+const booleanDecision = judge.boolean({ condition: "Proceed?" });
+export type BooleanWithoutContext = Expect<
+  Equal<typeof booleanDecision, Promise<BooleanDecision>>
+>;
+
 const choice = judge.choice({
-  context: {},
   options: ["billing", "support"],
   question: "Route",
 });
@@ -37,7 +42,6 @@ const conditional = judge.if({
     minimum: 0.8,
     uncertain: () => ({ review: true }) as const,
   },
-  context: {},
   else: ({ decision }) => {
     const exact: false = decision.value;
     // @ts-expect-error the else branch is narrowed to false.
@@ -84,7 +88,6 @@ const switched = judge.switch({
     minimum: 0.8,
     uncertain: () => ({ review: true }) as const,
   },
-  context: {},
   question: "Route",
 });
 export type SwitchContract = Expect<
@@ -102,7 +105,6 @@ switched.then((result) => {
 });
 
 const score = judge.score({
-  context: {},
   levels: ["low", "medium", "high"],
   question: "Risk",
 });
@@ -111,9 +113,9 @@ export type ScoreContract = Expect<
 >;
 
 // @ts-expect-error choice requires at least one option.
-judge.choice({ context: {}, options: [], question: "Empty" });
+judge.choice({ options: [], question: "Empty" });
 // @ts-expect-error score requires at least two levels.
-judge.score({ context: {}, levels: ["only"], question: "Too short" });
+judge.score({ levels: ["only"], question: "Too short" });
 
 declare const gateway: GatewayPlugin;
 const budget: ContextBudgetOptions = {

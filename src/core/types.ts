@@ -2,16 +2,16 @@
 export interface BooleanInput<S> {
   /** A trimmed, non-empty semantic condition for the provider to evaluate. */
   condition: string;
-  /** Shared evaluation context; Jev providers require JSON-compatible data. */
-  context: S;
+  /** Optional evaluation context; Jev providers require JSON-compatible data. */
+  context?: S | undefined;
   /** Cancels provider work and rejects the evaluation when aborted. */
   signal?: AbortSignal;
 }
 
 /** Describes a closed-set judgment requested directly from a decision provider. */
 export interface ChoiceInput<S, O extends readonly [string, ...string[]]> {
-  /** Shared evaluation context; Jev providers require JSON-compatible data. */
-  context: S;
+  /** Optional evaluation context; Jev providers require JSON-compatible data. */
+  context?: S | undefined;
   /** A non-empty literal tuple of unique, trimmed, non-empty legal values. */
   options: O;
   /** A trimmed, non-empty semantic question for the provider to answer. */
@@ -25,8 +25,8 @@ export interface ScoreInput<
   S,
   L extends readonly [string, string, ...string[]],
 > {
-  /** Shared evaluation context; Jev providers require JSON-compatible data. */
-  context: S;
+  /** Optional evaluation context; Jev providers require JSON-compatible data. */
+  context?: S | undefined;
   /**
    * At least two unique, trimmed labels ordered from lowest to highest. Score
    * `0` maps to the first label and `levels.length - 1` maps to the last.
@@ -200,8 +200,8 @@ export type ChoiceCases<
 export interface BooleanOptions<S> {
   /** A trimmed, non-empty semantic condition for Judge to evaluate. */
   condition: string;
-  /** Shared evaluation context; Jev providers require JSON-compatible data. */
-  context: S;
+  /** Optional evaluation context; Jev providers require JSON-compatible data. */
+  context?: S | undefined;
   /** Cancels provider work and rejects the evaluation when aborted. */
   signal?: AbortSignal;
 }
@@ -245,8 +245,8 @@ export interface JudgeSwitchOptions<
   cases: ChoiceCases<K, C>;
   /** Optional policy that routes below-threshold decisions to `uncertain`. */
   confidence?: ConfidencePolicy<U, ChoiceDecision<K>>;
-  /** Shared evaluation context; Jev providers require JSON-compatible data. */
-  context: S;
+  /** Optional evaluation context; Jev providers require JSON-compatible data. */
+  context?: S | undefined;
   /** A trimmed, non-empty semantic question for Judge to answer. */
   question: string;
   /** Cancels provider work before callback execution when aborted. */
