@@ -31,7 +31,7 @@
 - Consumes: source declarations and emitted `.d.ts` files.
 - Produces: an explicit `publicSurface` manifest plus checks for declaration/member JSDoc, required examples, package imports, and emitted comments.
 
-- [ ] **Step 1: Create the documentation harness with the core manifest**
+- [x] **Step 1: Create the documentation harness with the core manifest**
 
 **Execution note:** TypeScript 7 exposes version metadata rather than the
 stable parser API from the `typescript` package root. The implemented harness
@@ -171,13 +171,13 @@ test("distributed declarations retain representative JSDoc", () => {
 });
 ```
 
-- [ ] **Step 2: Run the harness red**
+- [x] **Step 2: Run the harness red**
 
 Run: `node --test test/jsdoc.test.ts`
 
 Expected: FAIL with the first undocumented core declaration.
 
-- [ ] **Step 3: Commit the red enforcement harness**
+- [x] **Step 3: Commit the red enforcement harness**
 
 ```bash
 git add test/jsdoc.test.ts
@@ -197,7 +197,7 @@ git commit -m "test: enforce public JSDoc coverage"
 - Consumes: the Task 1 core manifest.
 - Produces: complete provider-neutral IntelliSense documentation and examples for every Judge method.
 
-- [ ] **Step 1: Document the core factory and error hierarchy**
+- [x] **Step 1: Document the core factory and error hierarchy**
 
 Add this style of function documentation directly above core `createJudge`:
 
@@ -236,7 +236,7 @@ Use these exact class summaries and document each public `code` property:
 
 Each constructor comment must describe its message and optional cause; do not document the internal `JudgeErrorOptions` interface as public.
 
-- [ ] **Step 2: Document all input and result shapes**
+- [x] **Step 2: Document all input and result shapes**
 
 In `src/core/types.ts`, add declaration summaries and member comments with these semantics:
 
@@ -250,7 +250,7 @@ In `src/core/types.ts`, add declaration summaries and member comments with these
 
 Use `@remarks` on every `raw` property: “Provider-specific diagnostic data. Its shape is not a stable Judge API.”
 
-- [ ] **Step 3: Document control flow and provider contracts**
+- [x] **Step 3: Document control flow and provider contracts**
 
 Document:
 
@@ -261,7 +261,7 @@ Document:
 - `JudgeIfOptions` and `JudgeSwitchOptions`, including exactly-one callback execution and unchanged callback-error propagation.
 - core `CreateJudgeOptions.provider` as the only provider-neutral dependency.
 
-- [ ] **Step 4: Add package-import examples to all Judge methods**
+- [x] **Step 4: Add package-import examples to all Judge methods**
 
 Use these example scenarios on `JudgeClient` members:
 
@@ -279,7 +279,7 @@ import { createJudge } from "@brkn-labs/judge";
 
 Each method comment must include `@returns` plus applicable `@throws` references to `ConfigurationError`, `SerializationError`, `AbortError`, `ProviderError`, `ProviderContractError`, and unchanged callback errors.
 
-- [ ] **Step 5: Run the core documentation gate and commit**
+- [x] **Step 5: Run the core documentation gate and commit**
 
 Run: `node --test test/jsdoc.test.ts && npm run lint && npm run typecheck`
 
@@ -306,7 +306,7 @@ git commit -m "docs: document Judge core API"
 - Consumes: the public gateway protocol and four adapter entry points.
 - Produces: documented gateway contracts, configuration constraints, defaults, and consumer examples.
 
-- [ ] **Step 1: Extend the manifest and run red**
+- [x] **Step 1: Extend the manifest and run red**
 
 Add:
 
@@ -328,7 +328,7 @@ Run: `node --test test/jsdoc.test.ts`
 
 Expected: FAIL on `GatewayCapabilities`.
 
-- [ ] **Step 2: Document the gateway protocol**
+- [x] **Step 2: Document the gateway protocol**
 
 Use these declaration/member semantics in `src/gateway/types.ts`:
 
@@ -340,7 +340,7 @@ Use these declaration/member semantics in `src/gateway/types.ts`:
 - `GatewayEvaluationResult`: untrusted body plus optional diagnostic metadata.
 - `GatewayPlugin`: immutable capabilities, evaluation function, stable ID, and default model; evaluation output is untrusted until Judge validates it.
 
-- [ ] **Step 3: Document custom and hosted adapters**
+- [x] **Step 3: Document custom and hosted adapters**
 
 Add factory examples with exact subpath imports:
 
@@ -360,7 +360,7 @@ Document all option properties:
 
 Every factory must document `@param`, `@returns`, and applicable `@throws`.
 
-- [ ] **Step 4: Extend emitted markers and verify**
+- [x] **Step 4: Extend emitted markers and verify**
 
 Add representative markers:
 
@@ -375,7 +375,7 @@ Run: `node --test test/jsdoc.test.ts && npm run lint && npm run typecheck`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit gateway documentation**
+- [x] **Step 5: Commit gateway documentation**
 
 ```bash
 git add test/jsdoc.test.ts src/gateway/types.ts src/gateway/custom.ts src/gateway/vercel.ts src/gateway/cloudflare.ts src/gateway/openrouter.ts
@@ -398,7 +398,7 @@ git commit -m "docs: document gateway APIs"
 - Consumes: the remaining root-level and mock public surface.
 - Produces: complete package documentation, final emitted markers, and an updated PR.
 
-- [ ] **Step 1: Extend the final manifest and run red**
+- [x] **Step 1: Extend the final manifest and run red**
 
 Add:
 
@@ -413,7 +413,7 @@ Run: `node --test test/jsdoc.test.ts`
 
 Expected: FAIL on `GatewayJevOptions`.
 
-- [ ] **Step 2: Document root and direct Jev configuration**
+- [x] **Step 2: Document root and direct Jev configuration**
 
 Document root `createJudge` as the default Jev-backed factory. Its package-import example must show Vercel configuration plus an optional context budget. State that exactly one of `apiKey` or `gateway` is required, evaluation may be remote and billable, and callbacks remain application-owned.
 
@@ -426,7 +426,7 @@ Document:
 - `ContextBudgetOptions`: positive caller-supplied max, callback awaited before transport, threshold default `0.8`, estimates never block automatically.
 - `ContextBudgetWarning`: stable code, approximate token count, configured maximum, requested model, ratio, and effective threshold.
 
-- [ ] **Step 3: Document mock fixtures and factory**
+- [x] **Step 3: Document mock fixtures and factory**
 
 Use these semantics:
 
@@ -448,7 +448,7 @@ const judge = createJudge({
 });
 ```
 
-- [ ] **Step 4: Add final emitted markers and verify the focused gate**
+- [x] **Step 4: Add final emitted markers and verify the focused gate**
 
 Add:
 
@@ -469,7 +469,7 @@ npm run typecheck:examples
 
 Expected: PASS with no remote requests.
 
-- [ ] **Step 5: Run the full repository and distribution gate**
+- [x] **Step 5: Run the full repository and distribution gate**
 
 Run:
 
@@ -482,7 +482,7 @@ node --test test/package-isolation.test.ts test/package-exports.test.ts
 
 Expected: all unit, JSDoc, type, lint, build, package, export, and isolation checks pass.
 
-- [ ] **Step 6: Complete the plan, commit, and update PR 1**
+- [x] **Step 6: Complete the plan, commit, and update PR 1**
 
 Mark completed checkboxes `[x]`, then run:
 
