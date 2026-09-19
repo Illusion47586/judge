@@ -151,7 +151,7 @@ the built-in token creates or updates. Instead, a repository-owned GitHub App
 with only repository contents and pull-request write permissions will be
 installed on `Illusion47586/judge`. The workflow will mint a short-lived
 installation token with `actions/create-github-app-token` from repository
-configuration (`RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`) and pass that
+configuration (`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`) and pass that
 token to the Changesets version action. This allows required CI to run
 automatically on generated release pull requests. The app credential is only
 for GitHub release-PR automation; npm authentication remains OIDC-only.
