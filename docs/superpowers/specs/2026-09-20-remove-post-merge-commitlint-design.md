@@ -1,4 +1,4 @@
-# CI Policy and Community Templates Design
+# CI Policy, Community Templates, and SDK Positioning Design
 
 ## Goal
 
@@ -10,6 +10,9 @@ description after PR checks had passed.
 As part of the same contribution-governance change, add structured issue forms
 and a default pull-request template so contributors see the repository's intake
 and validation expectations before submitting work.
+
+Also refine the README's adjacent-SDK comparison with Judge's end-to-end typed
+decision-control-flow advantage.
 
 ## Design
 
@@ -56,6 +59,25 @@ template locations. A repository test will verify required top-level issue-form
 keys and field IDs, the disabled blank-issue setting, and the PR template's
 governance prompts without adding a runtime YAML dependency.
 
+## README type-safety positioning
+
+Add a `Type safety` row to the existing `How Judge differs` table. The comparison
+must acknowledge that both adjacent SDKs provide strong types:
+
+- Vercel AI SDK supports schema-validated typed outputs and type-safe tools.
+- TypeSafe AI's Jev JavaScript SDK infers answer types from supplied questions.
+
+Judge's narrower advantage is that types continue across the decision boundary:
+literal option or case keys form the legal choice union, the selected callback
+receives branch-narrowed decision metadata, and `if()` or `switch()` returns the
+inferred awaited union of all possible callback results, including uncertainty.
+
+A short paragraph after the table will explain that distinction without
+claiming Vercel AI SDK or the Jev SDK is untyped. The claim is grounded in
+Judge's public declaration contract and compile-time consumer tests, Vercel's
+documented typed outputs and tools, and TypeSafe AI's documented inferred answer
+types.
+
 ## Files
 
 - `.github/workflows/ci.yml`: remove the push-only landed-commit step.
@@ -63,6 +85,7 @@ governance prompts without adding a runtime YAML dependency.
 - `.github/ISSUE_TEMPLATE/02-feature-request.yml`: structured feature intake.
 - `.github/ISSUE_TEMPLATE/config.yml`: disable contributor blank issues.
 - `.github/pull_request_template.md`: default PR guidance and checklist.
+- `README.md`: add the end-to-end typed control-flow comparison.
 - `test/ci-workflow.test.ts`: stop expecting the step and add an explicit
   regression assertion that `commitlint --last` is absent from the workflow.
 - `test/community-templates.test.ts`: lock in the GitHub template paths and
@@ -74,6 +97,8 @@ governance prompts without adding a runtime YAML dependency.
 
 The focused workflow test must fail before the workflow edit and pass after it.
 The community-template test must fail before the templates exist and pass once
-all four files satisfy the expected contract. The final verification will run
-both focused tests, `pnpm lint`, `pnpm typecheck`, and the full repository check.
-The pull request must pass policy and both Node jobs before it is merged.
+all four files satisfy the expected contract. README wording will be checked
+against the public TypeScript contract and the existing consumer type tests.
+The final verification will run both focused tests, `pnpm lint`,
+`pnpm typecheck`, and the full repository check. The pull request must pass
+policy and both Node jobs before it is merged.
