@@ -158,9 +158,10 @@ context-warning handlers propagate unchanged and will be documented as such.
 
 ## Verification Architecture
 
-A new Node test will use the installed TypeScript compiler API to inspect
-source declarations. It will contain an explicit public-surface manifest that
-maps public symbols to their source files.
+A new Node test will use a dependency-free source scanner to inspect source
+declarations. TypeScript 7 no longer exposes the stable parser API from its
+package root, so the scanner uses an explicit public-surface manifest that maps
+public symbols and members to their source files.
 
 For every manifested declaration, the test will require:
 
@@ -185,8 +186,8 @@ there where a new public shape is introduced.
 ## Tree-shaking and Compatibility
 
 JSDoc is erased from JavaScript output and retained only in declaration files.
-It adds no runtime import or side effect. The TypeScript compiler API is already
-available as a development dependency and will be used only by tests.
+It adds no runtime import or side effect. The source scanner uses only Node
+standard-library modules and runs only in tests.
 
 No runtime signature or public type shape changes are required. Package entry
 points and optional peer boundaries remain unchanged.

@@ -4,13 +4,13 @@
 
 **Goal:** Add editor-native JSDoc to every public Judge declaration and member, preserve it in distributed declarations, and prevent future undocumented exports.
 
-**Architecture:** Document declarations at their source rather than on barrels. A TypeScript-AST test will maintain an explicit manifest, require summaries on declarations and public members, and require package-import `@example` tags on factories and Judge methods. A build-level assertion will prove representative comments survive in `.d.ts` output.
+**Architecture:** Document declarations at their source rather than on barrels. A dependency-free source manifest scanner will require summaries on declarations and public members plus package-import `@example` tags on factories and Judge methods. A build-level assertion will prove representative comments survive in `.d.ts` output.
 
-**Tech Stack:** TypeScript compiler API, Node.js test runner, TypeScript 7, Ultracite/Biome, ESM.
+**Tech Stack:** Node.js test runner, TypeScript 7, Ultracite/Biome, ESM.
 
 ## Global Constraints
 
-- Add no dependency; use the installed `typescript` development dependency.
+- Add no dependency; use Node standard-library modules for documentation tests.
 - Use package imports in every `@example`.
 - Document every public declaration and every public property or method.
 - Add `@example` to factories and every `JudgeClient` method.
@@ -31,7 +31,14 @@
 - Consumes: source declarations and emitted `.d.ts` files.
 - Produces: an explicit `publicSurface` manifest plus checks for declaration/member JSDoc, required examples, package imports, and emitted comments.
 
-- [ ] **Step 1: Create the AST harness with the core manifest**
+- [ ] **Step 1: Create the documentation harness with the core manifest**
+
+**Execution note:** TypeScript 7 exposes version metadata rather than the
+stable parser API from the `typescript` package root. The implemented harness
+therefore uses an explicit source-symbol/member manifest and dependency-free
+declaration scanner. This supersedes the originally planned compiler-API
+prototype below while preserving the same coverage and emitted-declaration
+checks.
 
 Create `test/jsdoc.test.ts` with these helpers and initial manifest:
 
