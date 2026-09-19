@@ -150,6 +150,78 @@ test("maps Score legend and probabilities to the request's ordered levels", asyn
   });
 });
 
+test("maps omitted context to null state for every Jev operation", async () => {
+  const requests: unknown[] = [];
+  const capture = (request: unknown): void => {
+    requests.push(request);
+  };
+
+  await createJevProvider({
+    gateway: gatewayWith(
+      { answers: { decision: { noul: 0.8, type: "noul" } } },
+      capture
+    ),
+  }).boolean({ condition: "Proceed?" });
+
+  await createJevProvider({
+    gateway: gatewayWith(
+      {
+        answers: {
+          decision: {
+            choice: "billing",
+            confidence: 0.8,
+            probabilities: { billing: 0.8, support: 0.2 },
+            type: "choice",
+          },
+        },
+      },
+      capture
+    ),
+  }).choice({ options: ["billing", "support"], question: "Route?" });
+
+  await createJevProvider({
+    gateway: gatewayWith(
+      {
+        answers: {
+          decision: {
+            confidence: 0.8,
+            legend: { 0: "low", 1: "high" },
+            probabilities: { 0: 0.2, 1: 0.8 },
+            score: 0.8,
+            type: "score",
+          },
+        },
+      },
+      capture
+    ),
+  }).score({ levels: ["low", "high"], question: "Risk?" });
+
+  assert.equal(requests.length, 3);
+  for (const request of requests) {
+    assert.equal((request as { state: unknown }).state, null);
+  }
+});
+
+test("preserves defined falsy Jev state", async () => {
+  await Promise.all(
+    ([false, 0, ""] as const).map(async (context) => {
+      let state: unknown;
+      const provider = createJevProvider({
+        gateway: gatewayWith(
+          { answers: { decision: { noul: 0.8, type: "noul" } } },
+          (request) => {
+            const { state: requestState } = request as { state: unknown };
+            state = requestState;
+          }
+        ),
+      });
+
+      await provider.boolean({ condition: "Proceed?", context });
+      assert.equal(state, context);
+    })
+  );
+});
+
 test("serializes before transport and rejects non-JSON context", async () => {
   let calls = 0;
   const provider = createJevProvider({

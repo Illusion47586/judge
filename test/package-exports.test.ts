@@ -1,6 +1,34 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+
+interface PackageManifest {
+  devDependencies: Record<string, string>;
+  exports: Record<string, { import: string; types: string }>;
+  main?: string;
+  peerDependencies?: Record<string, string>;
+  peerDependenciesMeta: Record<string, { optional: boolean }>;
+  types: string;
+}
+
+const OPTIONAL_INTEGRATIONS = ["@ai-sdk/gateway", "ai", "cloudflare"] as const;
+
+const manifest = JSON.parse(
+  readFileSync("package.json", "utf8")
+) as PackageManifest;
+
+test("publishes optional integrations without required runtime peers", () => {
+  assert.equal(manifest.main, "./dist/index.js");
+  assert.equal(manifest.peerDependencies, undefined);
+
+  for (const dependency of OPTIONAL_INTEGRATIONS) {
+    assert.ok(manifest.devDependencies[dependency]);
+    assert.deepEqual(manifest.peerDependenciesMeta[dependency], {
+      optional: true,
+    });
+  }
+});
 
 test("builds independent ESM entry points", async () => {
   execFileSync("pnpm", ["build"], {
@@ -26,4 +54,18 @@ test("builds independent ESM entry points", async () => {
   assert.equal(typeof cloudflare.cloudflareGateway, "function");
   assert.equal(typeof openrouter.openRouterGateway, "function");
   assert.equal(typeof mock.mockProvider, "function");
+
+  const exportTargets = Object.values(manifest.exports).flatMap((entry) => [
+    entry.import,
+    entry.types,
+  ]);
+  const publishedTargets = new Set([
+    manifest.main,
+    manifest.types,
+    ...exportTargets,
+  ]);
+  for (const target of publishedTargets) {
+    assert.ok(target);
+    readFileSync(target.slice(2));
+  }
 });

@@ -43,6 +43,7 @@
       "import": "./dist/mock/index.js"
     }
   },
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
@@ -91,11 +92,6 @@
     "husky": "^9.1.7",
     "typescript": "^7.0.2",
     "ultracite": "^7.12.0"
-  },
-  "peerDependencies": {
-    "@ai-sdk/gateway": "^4.0.87",
-    "ai": "^7.0.107",
-    "cloudflare": "^7.1.0"
   },
   "peerDependenciesMeta": {
     "@ai-sdk/gateway": {

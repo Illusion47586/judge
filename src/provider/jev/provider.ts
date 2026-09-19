@@ -104,6 +104,9 @@ const requestOptions = (
   };
 };
 
+const serializeOptionalState = (context: unknown): unknown =>
+  serializeState(context === undefined ? null : context);
+
 export const createJevProvider = (
   options: CreateJevProviderOptions
 ): DecisionProvider => {
@@ -132,7 +135,7 @@ export const createJevProvider = (
   return {
     boolean: async <S>(input: BooleanInput<S>) => {
       requireCapability(gateway, "boolean");
-      const state = serializeState(input.context);
+      const state = serializeOptionalState(input.context);
       const request: GatewayEvaluationRequest = {
         model,
         questions: {
@@ -153,7 +156,7 @@ export const createJevProvider = (
       input: ChoiceInput<S, O>
     ) => {
       requireCapability(gateway, "choice");
-      const state = serializeState(input.context);
+      const state = serializeOptionalState(input.context);
       const request: GatewayEvaluationRequest = {
         model,
         questions: {
@@ -180,7 +183,7 @@ export const createJevProvider = (
       input: ScoreInput<S, L>
     ) => {
       requireCapability(gateway, "score");
-      const state = serializeState(input.context);
+      const state = serializeOptionalState(input.context);
       const levels = [...input.levels] as unknown as L;
       const request: GatewayEvaluationRequest = {
         model,

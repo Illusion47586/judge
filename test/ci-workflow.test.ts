@@ -53,10 +53,10 @@ test("CI validates policy and both supported Node lines", () => {
     "if: steps.node-modules.outputs.cache-hit != 'true'",
     "run: pnpm install --frozen-lockfile",
     'run: pnpm commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose',
-    "run: pnpm commitlint --last --verbose",
     `run: printf '%s\\n' "$PR_TITLE" | pnpm commitlint --verbose`,
     'run: node scripts/check-changeset.ts "$BASE_SHA" "$HEAD_SHA" "$HEAD_REF" "$HEAD_REPOSITORY" "$BASE_REPOSITORY"',
   ]);
+  assert.ok(!policyJob.includes("commitlint --last"));
   assert.match(policyJob, HEAD_REF_ENV);
 
   assertOrdered(testJob, [

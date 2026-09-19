@@ -30,7 +30,15 @@ and higher-level than TypeSafe AI's official
 | Result | A validated Boolean, choice, or score decision, or the return value of one selected callback | Generated or evaluated model results for the application to compose | Native typed Jev answers and metadata |
 | Control flow | `if()` and `switch()` derive legal outcomes and execute exactly one application-owned callback | General primitives and agent loops; the application defines decision-specific branching | The application maps returned answers to its own branching |
 | Uncertainty | Built-in confidence thresholds and an explicit `uncertain` branch | Exposes model results; decision thresholds and fallback policy are application concerns | Returns Jev probabilities and confidence; the application applies policy |
+| Type safety | Literal options and case keys flow through validated decisions, narrowed callbacks, and inferred callback-result unions | Typed structured outputs and tools; application-specific branches remain application control flow | Answer types are inferred from the supplied Jev questions; application branching is separate |
 | Testing | Includes a deterministic decision mock and validates provider results before callbacks run | General-purpose model and provider test utilities | Direct Jev client; application-level decision mocks are separate |
+
+Judge's type safety continues across the decision boundary: request literals
+define the legal result union, selected callbacks receive branch-narrowed
+metadata, and `if()` or `switch()` returns the inferred awaited union of every
+possible callback—including the uncertainty path. Vercel AI SDK and the Jev SDK
+also provide strong types; Judge specializes those types around bounded control
+flow.
 
 Use Vercel AI SDK when you need a broad AI application toolkit. Use the Jev SDK
 when you want direct access to Jev's native API. Use Judge when the outcome is a
@@ -63,7 +71,8 @@ const result = await judge.if({
 ```
 
 The provider evaluates only the condition. Your TypeScript callbacks own every
-side effect and return value.
+side effect and return value. Context is optional when a decision needs no
+additional state.
 
 ## How it works
 
@@ -102,7 +111,8 @@ their exact subpaths are imported.
 
 ## Gateway setup
 
-Vercel and Cloudflare are optional peers. Install only the integration you use:
+Vercel and Cloudflare are optional integrations. Install only the integration
+you use:
 
 ```sh
 npm install @brkn-labs/judge ai @ai-sdk/gateway
@@ -110,7 +120,9 @@ npm install @brkn-labs/judge ai @ai-sdk/gateway
 npm install @brkn-labs/judge cloudflare
 ```
 
-OpenRouter and custom gateways add no runtime dependency:
+Direct Jev, core, mock, custom gateway, and OpenRouter usage requires no
+additional integration package. For example, configure the Vercel integration
+after installing its packages:
 
 ```ts
 import { createJudge } from "@brkn-labs/judge";
