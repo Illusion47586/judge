@@ -1,8 +1,16 @@
 {
   "name": "@brkn-labs/judge",
   "version": "0.0.0",
-  "private": true,
   "description": "Probabilistic judgment. Deterministic execution.",
+  "homepage": "https://github.com/Illusion47586/judge#readme",
+  "bugs": {
+    "url": "https://github.com/Illusion47586/judge/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Illusion47586/judge.git"
+  },
+  "license": "MIT",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -41,36 +49,46 @@
     "README.md"
   ],
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig.build.json",
-    "check": "npm run lint && npm run typecheck && npm run typecheck:contracts && npm run typecheck:examples && npm run test:unit",
+    "build": "pnpm clean && tsc -p tsconfig.build.json",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "check": "pnpm lint && pnpm typecheck && pnpm typecheck:contracts && pnpm typecheck:examples && pnpm test:unit",
     "clean": "node --eval \"import fs from 'node:fs'; fs.rmSync('dist', { recursive: true, force: true })\"",
-    "example:agent": "npm run build --silent && node --env-file=.env examples/09-agent-tool-routing.ts",
-    "example:all": "npm run build --silent && node scripts/run-examples.ts",
-    "example:boolean": "npm run build --silent && node --env-file=.env examples/01-boolean.ts",
-    "example:choice": "npm run build --silent && node --env-file=.env examples/03-choice.ts",
-    "example:if": "npm run build --silent && node --env-file=.env examples/02-if.ts",
-    "example:incident": "npm run build --silent && node --env-file=.env examples/08-incident-escalation.ts",
-    "example:risk": "npm run build --silent && node --env-file=.env examples/07-transaction-risk.ts",
-    "example:score": "npm run build --silent && node --env-file=.env examples/05-score.ts",
-    "example:support": "npm run build --silent && node --env-file=.env examples/06-support-triage.ts",
-    "example:switch": "npm run build --silent && node --env-file=.env examples/04-switch.ts",
+    "commitlint": "commitlint",
+    "example:agent": "pnpm --silent build && node --env-file=.env examples/09-agent-tool-routing.ts",
+    "example:all": "pnpm --silent build && node scripts/run-examples.ts",
+    "example:boolean": "pnpm --silent build && node --env-file=.env examples/01-boolean.ts",
+    "example:choice": "pnpm --silent build && node --env-file=.env examples/03-choice.ts",
+    "example:if": "pnpm --silent build && node --env-file=.env examples/02-if.ts",
+    "example:incident": "pnpm --silent build && node --env-file=.env examples/08-incident-escalation.ts",
+    "example:risk": "pnpm --silent build && node --env-file=.env examples/07-transaction-risk.ts",
+    "example:score": "pnpm --silent build && node --env-file=.env examples/05-score.ts",
+    "example:support": "pnpm --silent build && node --env-file=.env examples/06-support-triage.ts",
+    "example:switch": "pnpm --silent build && node --env-file=.env examples/04-switch.ts",
     "fix": "ultracite fix",
     "lint": "ultracite check",
-    "prepack": "npm run build",
+    "prepack": "pnpm build",
+    "prepare": "node .husky/install.mjs",
+    "release": "pnpm build && node scripts/publish-release.ts",
     "test": "node --test --test-concurrency=1",
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
     "test:unit": "node --test --test-concurrency=1",
     "test:watch": "node --test --watch",
     "typecheck": "tsc --noEmit",
-    "typecheck:contracts": "npm run build --silent && tsc --noEmit -p tsconfig.type-contracts.json",
-    "typecheck:examples": "npm run build --silent && tsc --noEmit -p tsconfig.examples.json"
+    "typecheck:contracts": "pnpm --silent build && tsc --noEmit -p tsconfig.type-contracts.json",
+    "typecheck:examples": "pnpm --silent build && tsc --noEmit -p tsconfig.examples.json",
+    "version-packages": "changeset version"
   },
   "devDependencies": {
     "@ai-sdk/gateway": "^4.0.87",
     "@biomejs/biome": "^2.5.12",
+    "@changesets/cli": "^3.0.3",
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@types/node": "^26.6.1",
     "ai": "^7.0.107",
     "cloudflare": "^7.1.0",
+    "husky": "^9.1.7",
     "typescript": "^7.0.2",
     "ultracite": "^7.12.0"
   },
@@ -90,7 +108,11 @@
       "optional": true
     }
   },
+  "packageManager": "pnpm@12.4.2",
   "engines": {
     "node": ">=22.18.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

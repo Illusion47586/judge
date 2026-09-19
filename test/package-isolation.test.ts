@@ -36,7 +36,7 @@ const moduleGraph = (entry: string): string => {
 };
 
 test("emitted entry-point graphs preserve integration boundaries", () => {
-  execFileSync("npm", ["run", "build"], {
+  execFileSync("pnpm", ["build"], {
     cwd: process.cwd(),
     stdio: "pipe",
   });
