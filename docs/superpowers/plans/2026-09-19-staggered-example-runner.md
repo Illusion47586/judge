@@ -445,7 +445,7 @@ and 9 passed on their first attempt. Examples 6–8 received explicit Vercel
 free-tier `429` responses on both the initial attempt and the single retry, so
 the command correctly summarized those three as failures and exited non-zero.
 
-- [ ] **Step 5: Complete the plan and update PR 1**
+- [x] **Step 5: Complete the plan and update PR 1**
 
 Mark completed checkboxes `[x]`, then run:
 
