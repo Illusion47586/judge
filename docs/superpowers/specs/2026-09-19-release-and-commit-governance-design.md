@@ -68,10 +68,12 @@ created with Changesets' `--empty` option. This makes release intent reviewable
 instead of silently inferring it from file paths or commit types.
 
 A small dependency-free Node policy script will inspect the Git diff between
-the pull request base and head. It will accept a newly added Changeset Markdown
-file and reject a pull request without one. It will exempt only the generated
-Changesets release branch, whose purpose is to consume and delete accumulated
-Changesets. Its parsing and branch rules will have unit tests.
+the pull request base and head. It will accept only a newly added Changeset
+Markdown file with valid normal or empty frontmatter and reject malformed or
+missing decisions. It will exempt only the generated Changesets release branch
+when the head and base repository identities also match, preventing a fork from
+spoofing the reserved branch name. Revision inputs, content parsing, symlinked
+CLI execution, and branch/repository rules will have unit or integration tests.
 
 The hosted Changeset Bot GitHub App will also be installed for contributor
 feedback and its one-click Changeset authoring link. The bot is advisory; the

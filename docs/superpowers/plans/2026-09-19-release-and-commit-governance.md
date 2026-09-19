@@ -266,9 +266,30 @@ Expected: commit succeeds through both Husky hooks.
 - Create: `test/changeset-policy.test.ts`
 
 **Interfaces:**
-- Produces `hasChangesetDecision(lines: readonly string[]): boolean`.
-- Produces `validateChangesetDecision(lines: readonly string[], headRef: string): void`.
-- CLI consumes `<base-sha> <head-sha> <head-ref>` and exits non-zero when a normal pull request adds no Changeset.
+- Produces `ChangesetReader = (file: string) => string`.
+- Produces `hasChangesetDecision(lines, read?): boolean`, validating both the
+  added path and canonical Changesets v3 contents.
+- Produces `validateChangesetDecision(lines, headRef, headRepository,
+  baseRepository, read?): void`.
+- CLI consumes `<base-sha> <head-sha> <head-ref> <head-repository>
+  <base-repository>` and exits non-zero when a normal pull request adds no
+  valid Changeset.
+
+**Security-review amendments (authoritative over the initial red/green snippets below):**
+
+- Accept the exact Changesets v3 plain-empty output `---\n\n---\n\n\n`,
+  compact empty frontmatter, and summarized empty decisions.
+- Accept one `@brkn-labs/judge` major/minor/patch entry only with a nonblank
+  summary; reject malformed, multiple, unknown, wrong-package, wrong-bump, and
+  summaryless records.
+- Exempt `changeset-release/main` only when nonempty head and base repository
+  identities match.
+- Validate 40–64 character hexadecimal object IDs before invoking Git and pass
+  `--end-of-options` before the three-dot revision range.
+- Resolve the entry point and module through real paths so symlink execution
+  still runs the CLI.
+- Cover all of the above with injected-reader unit cases and a fake-Git CLI
+  integration test. Final focused expectation: 7 passing tests.
 
 - [ ] **Step 1: Write failing policy unit tests**
 
@@ -441,7 +462,9 @@ test("CI validates policy and both supported Node lines", () => {
   assert.match(workflow, /commitlint --from/u);
   assert.match(workflow, /commitlint --last/u);
   assert.match(workflow, /PR_TITLE/u);
+  assert.match(workflow, /HEAD_REF: \$\{\{ github\.head_ref \}\}/u);
   assert.match(workflow, /scripts\/check-changeset\.ts/u);
+  assert.doesNotMatch(workflow, /run:.*\$\{\{ github\.head_ref/u);
 });
 
 test("CI caches exact node_modules trees with read-only permissions", () => {
@@ -517,7 +540,13 @@ jobs:
         run: printf '%s\n' "$PR_TITLE" | npm run commitlint -- --verbose
       - name: Require a Changeset decision
         if: github.event_name == 'pull_request'
-        run: node scripts/check-changeset.ts "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" "${{ github.head_ref }}"
+        env:
+          BASE_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-changeset.ts "$BASE_SHA" "$HEAD_SHA" "$HEAD_REF" "$HEAD_REPOSITORY" "$BASE_REPOSITORY"
 
   test:
     name: Test (Node ${{ matrix.node }})
