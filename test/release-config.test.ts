@@ -112,6 +112,7 @@ test("production-only installs succeed without Husky", () => {
     mkdirSync(join(fixture, ".husky"));
     copyFileSync("package.json", join(fixture, "package.json"));
     copyFileSync("pnpm-lock.yaml", join(fixture, "pnpm-lock.yaml"));
+    copyFileSync("pnpm-workspace.yaml", join(fixture, "pnpm-workspace.yaml"));
     copyFileSync(".husky/install.mjs", join(fixture, ".husky/install.mjs"));
 
     const safeEnvironment = Object.fromEntries(
@@ -138,9 +139,13 @@ test("production-only installs succeed without Husky", () => {
 
 test("package includes the MIT license", () => {
   const license = readFileSync("LICENSE", "utf8");
-  const pack = spawnSync("pnpm", ["pack", "--dry-run", "--json"], {
-    encoding: "utf8",
-  });
+  const pack = spawnSync(
+    "pnpm",
+    ["pack", "--dry-run", "--json", "--ignore-scripts"],
+    {
+      encoding: "utf8",
+    }
+  );
 
   assert.match(license, MIT_COPYRIGHT);
   assert.match(license, MIT_GRANT);
