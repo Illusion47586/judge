@@ -31,7 +31,7 @@
 **Interfaces:**
 - Produces: `ExampleAttempt`, `ExampleRunResult`, `RunExamplesOptions`, `isRateLimited(output)`, `parseDelay(value, name, fallback)`, and `runExamples(options)`.
 
-- [ ] **Step 1: Write failing scheduling tests**
+- [x] **Step 1: Write failing scheduling tests**
 
 Create `test/examples-runner.test.ts`:
 
@@ -156,13 +156,13 @@ test("parses non-negative integer delays", () => {
 });
 ```
 
-- [ ] **Step 2: Run the scheduler tests red**
+- [x] **Step 2: Run the scheduler tests red**
 
 Run: `node --test test/examples-runner.test.ts`
 
 Expected: FAIL because `scripts/run-examples.ts` does not exist.
 
-- [ ] **Step 3: Implement the pure orchestration API**
+- [x] **Step 3: Implement the pure orchestration API**
 
 Create `scripts/run-examples.ts` with these exported contracts and functions:
 
@@ -225,13 +225,13 @@ export const runExamples = async (
 };
 ```
 
-- [ ] **Step 4: Run focused tests and lint**
+- [x] **Step 4: Run focused tests and lint**
 
 Run: `node --test test/examples-runner.test.ts && npm run lint`
 
 Expected: PASS without real waiting or network work.
 
-- [ ] **Step 5: Commit the orchestration unit**
+- [x] **Step 5: Commit the orchestration unit**
 
 ```bash
 git add scripts/run-examples.ts test/examples-runner.test.ts
@@ -252,7 +252,7 @@ git commit -m "feat: add staggered example scheduler"
 - Consumes: Task 1 orchestration and nine example paths.
 - Produces: `selectEnvironmentFile(exists)`, `spawnExample(file, envFile)`, CLI output, and the updated `example:all` script.
 
-- [ ] **Step 1: Add failing environment-selection tests**
+- [x] **Step 1: Add failing environment-selection tests**
 
 Append:
 
@@ -279,7 +279,7 @@ Run: `node --test test/examples-runner.test.ts`
 
 Expected: FAIL because `selectEnvironmentFile` is missing.
 
-- [ ] **Step 2: Implement environment selection and child spawning**
+- [x] **Step 2: Implement environment selection and child spawning**
 
 Add Node imports and production constants:
 
@@ -319,7 +319,7 @@ Forward stdout/stderr chunks with `process.stdout.write` and
 `process.stderr.write`. Keep only `stderrTail.slice(-STDERR_TAIL_LIMIT)`. Resolve
 with `{ code: code ?? 1, stderrTail }` on `close`, and reject on `error`.
 
-- [ ] **Step 3: Add the CLI boundary and summary**
+- [x] **Step 3: Add the CLI boundary and summary**
 
 At module execution, compare `process.argv[1]` with `fileURLToPath(import.meta.url)`.
 When equal:
@@ -333,7 +333,7 @@ When equal:
 7. Catch configuration/spawn failures, print only the error message, and set
    `process.exitCode = 1`.
 
-- [ ] **Step 4: Update package contracts**
+- [x] **Step 4: Update package contracts**
 
 Change:
 
@@ -345,7 +345,7 @@ Update `test/examples.test.ts` so it asserts `example:all` contains
 `scripts/run-examples.ts` and no longer asserts that its command ends with the
 ninth example. Keep all nine individual command assertions.
 
-- [ ] **Step 5: Verify CLI structure without live execution**
+- [x] **Step 5: Verify CLI structure without live execution**
 
 Run:
 
@@ -359,7 +359,7 @@ npm run typecheck
 Expected: tests and checks pass; the script points to the runner; no child
 example executes.
 
-- [ ] **Step 6: Commit the CLI runner**
+- [x] **Step 6: Commit the CLI runner**
 
 ```bash
 git add scripts/run-examples.ts test/examples-runner.test.ts package.json test/examples.test.ts
@@ -378,7 +378,7 @@ git commit -m "feat: run examples with rate-limit backoff"
 - Consumes: completed runner and the user's ignored `.env.local`.
 - Produces: documented controls, full offline verification, and a nine-example live result report.
 
-- [ ] **Step 1: Document stagger, retry, environment, and billing behavior**
+- [x] **Step 1: Document stagger, retry, environment, and billing behavior**
 
 Update the aggregate-command section in `examples/README.md` with:
 
@@ -405,7 +405,7 @@ The command exits non-zero if any example ultimately fails.
 Change setup instructions to say `.env.local` is preferred while `.env` remains
 supported.
 
-- [ ] **Step 2: Run every offline gate**
+- [x] **Step 2: Run every offline gate**
 
 Run:
 
@@ -422,7 +422,7 @@ git ls-files .env .env.local
 Expected: all checks pass; both environment files are ignored and untracked;
 no live example has run.
 
-- [ ] **Step 3: Commit documentation before live work**
+- [x] **Step 3: Commit documentation before live work**
 
 ```bash
 git add examples/README.md
@@ -432,13 +432,18 @@ git status --short
 
 Expected: clean tree.
 
-- [ ] **Step 4: Run the live suite**
+- [x] **Step 4: Run the live suite**
 
 Run: `npm run example:all`
 
 Expected: all nine examples are attempted using `.env.local`, with 15-second
 spacing and at most one 60-second retry per explicit rate limit. Do not expose
 the API key. Capture the final summary and note every retry or final failure.
+
+Actual result on 2026-09-19: all nine examples were attempted. Examples 1–5
+and 9 passed on their first attempt. Examples 6–8 received explicit Vercel
+free-tier `429` responses on both the initial attempt and the single retry, so
+the command correctly summarized those three as failures and exited non-zero.
 
 - [ ] **Step 5: Complete the plan and update PR 1**
 
