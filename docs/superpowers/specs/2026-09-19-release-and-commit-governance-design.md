@@ -71,6 +71,11 @@ file and reject a pull request without one. It will exempt only the generated
 Changesets release branch, whose purpose is to consume and delete accumulated
 Changesets. Its parsing and branch rules will have unit tests.
 
+The hosted Changeset Bot GitHub App will also be installed for contributor
+feedback and its one-click Changeset authoring link. The bot is advisory; the
+required CI policy remains authoritative because the hosted bot does not create
+release pull requests or enforce the repository's stricter empty-Changeset rule.
+
 ### Conventional Commits
 
 Use `@commitlint/cli` with `@commitlint/config-conventional`. The standard type,
@@ -116,8 +121,9 @@ stable Changesets v2 sub-actions instead of the combined action so permissions
 stay separated:
 
 1. `select-mode` determines whether to version, publish, or do nothing.
-2. `version` receives only `contents: write` and `pull-requests: write`, then
-   creates or updates the conventionally named release pull request.
+2. `version` keeps the workflow token read-only, mints a short-lived token from
+   the release GitHub App's contents and pull-request permissions, then creates
+   or updates the conventionally named release pull request.
 3. `publish` receives `id-token: write` and only the GitHub permissions required
    to create tags and GitHub releases, then runs the build-and-publish script.
 
@@ -139,6 +145,17 @@ operator sequence is:
 5. merge the generated release pull request, allowing OIDC to publish `0.1.0`
    with automatic provenance.
 
+The version job will not use the built-in `GITHUB_TOKEN` to author release pull
+requests. GitHub requires manual approval for CI started by pull requests that
+the built-in token creates or updates. Instead, a repository-owned GitHub App
+with only repository contents and pull-request write permissions will be
+installed on `Illusion47586/judge`. The workflow will mint a short-lived
+installation token with `actions/create-github-app-token` from repository
+configuration (`RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`) and pass that
+token to the Changesets version action. This allows required CI to run
+automatically on generated release pull requests. The app credential is only
+for GitHub release-PR automation; npm authentication remains OIDC-only.
+
 The manual bootstrap uses the maintainer's interactive npm authentication. No
 long-lived npm credential is added to GitHub.
 
@@ -150,7 +167,7 @@ long-lived npm credential is added to GitHub.
 - A missing normal or empty Changeset fails the policy job.
 - Any Node matrix failure blocks merging.
 - Release pull-request creation fails visibly if GitHub Actions cannot create
-  pull requests.
+  pull requests or the release GitHub App is not configured.
 - Publishing fails without a valid npm trusted-publisher relationship and never
   falls back to `NPM_TOKEN` or `NODE_AUTH_TOKEN`.
 - A versioning failure leaves changes confined to the release pull request. If
@@ -181,13 +198,16 @@ explicit operator action.
 `CONTRIBUTING.md` will document Conventional Commit examples, local hooks,
 normal and empty Changesets, and the checks contributors should run.
 `docs/releasing.md` will document Changesets release behavior, repository
-settings, OIDC bootstrap, provenance, and failure recovery. No README changes
-are part of this scope.
+settings, hosted Changeset Bot installation, release GitHub App setup, OIDC
+bootstrap, provenance, and failure recovery. No README changes are part of this
+scope.
 
 ## Authoritative References
 
 - [Changesets configuration](https://github.com/changesets/changesets/blob/main/docs/config-file-options.md)
 - [Changesets GitHub Action v2](https://github.com/changesets/action/tree/v2.1.2)
+- [Changeset Bot GitHub App](https://github.com/apps/changeset-bot)
+- [GitHub token workflow-trigger behavior](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)
 - [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
 - [Commitlint local setup](https://commitlint.js.org/guides/local-setup)
 - [Commitlint CI setup](https://commitlint.js.org/guides/ci-setup)
