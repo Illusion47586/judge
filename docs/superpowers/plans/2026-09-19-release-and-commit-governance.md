@@ -12,6 +12,7 @@
 
 - Do not create or modify any `README` file, including `.changeset/README.md`.
 - Keep the package name `@brkn-labs/judge` and make it publicly publishable.
+- License the public package under MIT with `Copyright (c) 2026 Dhruv Tiwari`.
 - Use npm OIDC trusted publishing only; never add `NPM_TOKEN` or `NODE_AUTH_TOKEN`.
 - Use the hosted Changeset Bot only for advisory contributor feedback.
 - Use a repository-owned, least-privilege GitHub App token for release pull requests.
@@ -33,8 +34,10 @@
 - Create: `.changeset/config.json`
 - Create: `.changeset/initial-public-release.md`
 - Create: `commitlint.config.ts`
+- Create: `.husky/install.mjs`
 - Create: `.husky/pre-commit`
 - Create: `.husky/commit-msg`
+- Create: `LICENSE`
 - Create: `test/release-config.test.ts`
 
 **Interfaces:**
@@ -60,6 +63,7 @@ test("package is public and exposes release commands", () => {
   const repository = packageJson.repository as Record<string, string>;
 
   assert.equal("private" in packageJson, false);
+  assert.equal(packageJson.license, "MIT");
   assert.equal(publishConfig.access, "public");
   assert.equal(repository.type, "git");
   assert.equal(
@@ -73,7 +77,7 @@ test("package is public and exposes release commands", () => {
   assert.equal(scripts.changeset, "changeset");
   assert.equal(scripts["changeset:status"], "changeset status");
   assert.equal(scripts.commitlint, "commitlint");
-  assert.equal(scripts.prepare, "husky");
+  assert.equal(scripts.prepare, "node .husky/install.mjs");
   assert.equal(scripts["version-packages"], "changeset version");
   assert.equal(scripts.release, "npm run build && changeset publish");
 });
@@ -130,6 +134,7 @@ Patch `package.json` so it has no `private` field and contains these exact addit
     "url": "git+https://github.com/Illusion47586/judge.git"
   },
   "homepage": "https://github.com/Illusion47586/judge#readme",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Illusion47586/judge/issues"
   },
@@ -140,7 +145,7 @@ Patch `package.json` so it has no `private` field and contains these exact addit
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "commitlint": "commitlint",
-    "prepare": "husky",
+    "prepare": "node .husky/install.mjs",
     "release": "npm run build && changeset publish",
     "version-packages": "changeset version"
   }
@@ -150,6 +155,11 @@ Patch `package.json` so it has no `private` field and contains these exact addit
 Run: `npm install --package-lock-only`
 
 Expected: lockfile root metadata matches `package.json`.
+
+Create `LICENSE` with the canonical MIT license text, including
+`Copyright (c) 2026 Dhruv Tiwari`. Extend the contract test to assert the SPDX
+identifier, copyright, grant text, and that
+`npm pack --dry-run --json --ignore-scripts` includes `LICENSE`.
 
 - [ ] **Step 5: Add Changesets configuration and the seed release**
 
@@ -194,6 +204,19 @@ const config = {
 export default config;
 ```
 
+Create `.husky/install.mjs` so production-only and CI installs do not try to
+load the dev-only Husky package:
+
+```js
+if (process.env.NODE_ENV === "production" || process.env.CI === "true") {
+  process.exit(0);
+}
+
+const husky = (await import("husky")).default;
+
+console.log(husky());
+```
+
 Create `.husky/pre-commit` with exactly:
 
 ```sh
@@ -220,6 +243,7 @@ printf '%s\n' 'feat: add release automation' | npm run commitlint -- --verbose
 if printf '%s\n' 'add release automation' | npm run commitlint -- --verbose; then exit 1; fi
 .husky/pre-commit
 npm run changeset:status
+npm pack --dry-run
 ```
 
 Expected: contract test passes; valid commit passes; invalid commit fails; hook commands pass; Changesets reports the planned minor release.

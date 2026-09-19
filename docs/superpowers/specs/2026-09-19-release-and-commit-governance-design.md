@@ -37,6 +37,8 @@ lands on `main`.
 
 - remove `"private": true`;
 - keep the package name `@brkn-labs/judge`;
+- declare the package as MIT licensed and ship the canonical `LICENSE` grant
+  with `Copyright (c) 2026 Dhruv Tiwari`;
 - add `publishConfig.access: "public"`;
 - add canonical repository, homepage, and issue-tracker metadata pointing to
   `https://github.com/Illusion47586/judge`; and
