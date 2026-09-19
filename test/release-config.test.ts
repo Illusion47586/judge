@@ -8,6 +8,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,10 +16,12 @@ import test from "node:test";
 
 const COMMITLINT_CONFIG = /@commitlint\/config-conventional/u;
 const INITIAL_RELEASE = /"@brkn-labs\/judge": minor/u;
+const INITIAL_RELEASE_FILE = ".changeset/initial-public-release.md";
 const INVALID_COMMIT_MESSAGE = /type may not be empty/u;
 const MIT_COPYRIGHT = /Copyright \(c\) 2026 Dhruv Tiwari/u;
 const MIT_GRANT =
   /Permission is hereby granted, free of charge, to any person obtaining a copy/u;
+const UNRELEASED_VERSION = "0.0.0";
 const EXECUTABLE_DIVISORS = [64, 8, 1] as const;
 
 const hasExecutableBit = (file: string): boolean => {
@@ -37,6 +40,19 @@ const runCommitlint = (message: string) =>
 
 const readJson = (file: string): Record<string, unknown> =>
   JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+
+const assertInitialReleaseLifecycle = (root: string): void => {
+  const packageJson = readJson(join(root, "package.json"));
+  const initialReleaseFile = join(root, INITIAL_RELEASE_FILE);
+
+  if (packageJson.version === UNRELEASED_VERSION) {
+    assert.equal(existsSync(initialReleaseFile), true);
+    assert.match(readFileSync(initialReleaseFile, "utf8"), INITIAL_RELEASE);
+    return;
+  }
+
+  assert.equal(existsSync(initialReleaseFile), false);
+};
 
 test("package is public and exposes release commands", () => {
   const packageJson = readJson("package.json");
@@ -72,16 +88,43 @@ test("package is public and exposes release commands", () => {
 
 test("Changesets targets public main releases", () => {
   const config = readJson(".changeset/config.json");
-  const initialChangeset = readFileSync(
-    ".changeset/initial-public-release.md",
-    "utf8"
-  );
 
   assert.equal(config.baseBranch, "main");
   assert.equal(config.access, "public");
   assert.equal(config.commit, false);
   assert.equal(config.changelog, "@changesets/cli/changelog");
-  assert.match(initialChangeset, INITIAL_RELEASE);
+  assertInitialReleaseLifecycle(".");
+});
+
+test("initial release seed follows the package lifecycle", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "judge-release-lifecycle-"));
+
+  try {
+    mkdirSync(join(fixture, ".changeset"));
+    writeFileSync(
+      join(fixture, "package.json"),
+      JSON.stringify({ name: "@brkn-labs/judge", version: UNRELEASED_VERSION })
+    );
+
+    assert.throws(() => assertInitialReleaseLifecycle(fixture));
+
+    writeFileSync(
+      join(fixture, INITIAL_RELEASE_FILE),
+      '---\n"@brkn-labs/judge": minor\n---\n\nInitial public release.\n'
+    );
+    assert.doesNotThrow(() => assertInitialReleaseLifecycle(fixture));
+
+    writeFileSync(
+      join(fixture, "package.json"),
+      JSON.stringify({ name: "@brkn-labs/judge", version: "0.1.0" })
+    );
+    assert.throws(() => assertInitialReleaseLifecycle(fixture));
+
+    rmSync(join(fixture, INITIAL_RELEASE_FILE));
+    assert.doesNotThrow(() => assertInitialReleaseLifecycle(fixture));
+  } finally {
+    rmSync(fixture, { force: true, recursive: true });
+  }
 });
 
 test("local hooks enforce quality and Conventional Commits", () => {

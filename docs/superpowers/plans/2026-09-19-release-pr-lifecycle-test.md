@@ -34,7 +34,7 @@ and a versioned package requires the seed to be absent.
 
 - [ ] **Step 2: Run the focused test and verify failure**
 
-Run: `pnpm exec tsx --test test/release-config.test.ts`
+Run: `node --test test/release-config.test.ts`
 
 Expected: the versioned fixture fails because the current assertion reads the
 seed unconditionally.
@@ -47,7 +47,7 @@ seed does not exist. Call the helper from the repository configuration test.
 
 - [ ] **Step 4: Verify focused and full checks**
 
-Run: `pnpm exec tsx --test test/release-config.test.ts`
+Run: `node --test test/release-config.test.ts`
 
 Expected: PASS.
 
