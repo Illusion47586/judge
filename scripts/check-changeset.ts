@@ -78,7 +78,7 @@ export const validateChangesetDecision = (
     return;
   }
   throw new Error(
-    "Every pull request must add a valid normal or empty Changeset. Run `npm run changeset` or `npm run changeset -- --empty`."
+    "Every pull request must add a valid normal or empty Changeset. Run `pnpm changeset` or `pnpm changeset --empty`."
   );
 };
 

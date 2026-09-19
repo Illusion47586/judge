@@ -341,7 +341,7 @@ test("every manifested public declaration and member has JSDoc", () => {
 });
 
 test("distributed declarations retain representative JSDoc", () => {
-  execFileSync("npm", ["run", "build"], {
+  execFileSync("pnpm", ["build"], {
     cwd: process.cwd(),
     stdio: "pipe",
   });

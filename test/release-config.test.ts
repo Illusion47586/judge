@@ -30,7 +30,7 @@ const hasExecutableBit = (file: string): boolean => {
 };
 
 const runCommitlint = (message: string) =>
-  spawnSync("npm", ["run", "commitlint", "--", "--verbose"], {
+  spawnSync("pnpm", ["commitlint", "--verbose"], {
     encoding: "utf8",
     input: `${message}\n`,
   });
@@ -64,7 +64,10 @@ test("package is public and exposes release commands", () => {
   assert.equal(scripts.commitlint, "commitlint");
   assert.equal(scripts.prepare, "node .husky/install.mjs");
   assert.equal(scripts["version-packages"], "changeset version");
-  assert.equal(scripts.release, "npm run build && changeset publish");
+  assert.equal(
+    scripts.release,
+    "pnpm build && npm publish --ignore-scripts && pnpm exec changeset git-tag"
+  );
 });
 
 test("Changesets targets public main releases", () => {
@@ -86,8 +89,8 @@ test("local hooks enforce quality and Conventional Commits", () => {
   const commitMessage = readFileSync(".husky/commit-msg", "utf8");
   const commitlint = readFileSync("commitlint.config.ts", "utf8");
 
-  assert.equal(preCommit, "npm run lint && npm run typecheck\n");
-  assert.equal(commitMessage, 'npm run commitlint -- --edit "$1"\n');
+  assert.equal(preCommit, "pnpm lint && pnpm typecheck\n");
+  assert.equal(commitMessage, 'pnpm commitlint --edit "$1"\n');
   assert.match(commitlint, COMMITLINT_CONFIG);
   assert.equal(hasExecutableBit(".husky/pre-commit"), true);
   assert.equal(hasExecutableBit(".husky/commit-msg"), true);
@@ -108,7 +111,7 @@ test("production-only installs succeed without Husky", () => {
   try {
     mkdirSync(join(fixture, ".husky"));
     copyFileSync("package.json", join(fixture, "package.json"));
-    copyFileSync("package-lock.json", join(fixture, "package-lock.json"));
+    copyFileSync("pnpm-lock.yaml", join(fixture, "pnpm-lock.yaml"));
     copyFileSync(".husky/install.mjs", join(fixture, ".husky/install.mjs"));
 
     const safeEnvironment = Object.fromEntries(
@@ -117,8 +120,8 @@ test("production-only installs succeed without Husky", () => {
       )
     );
     const install = spawnSync(
-      "npm",
-      ["ci", "--omit=dev", "--no-audit", "--no-fund"],
+      "pnpm",
+      ["install", "--prod", "--frozen-lockfile"],
       {
         cwd: fixture,
         encoding: "utf8",
@@ -135,19 +138,17 @@ test("production-only installs succeed without Husky", () => {
 
 test("package includes the MIT license", () => {
   const license = readFileSync("LICENSE", "utf8");
-  const pack = spawnSync(
-    "npm",
-    ["pack", "--dry-run", "--json", "--ignore-scripts"],
-    { encoding: "utf8" }
-  );
+  const pack = spawnSync("pnpm", ["pack", "--dry-run", "--json"], {
+    encoding: "utf8",
+  });
 
   assert.match(license, MIT_COPYRIGHT);
   assert.match(license, MIT_GRANT);
   assert.equal(pack.status, 0, pack.stderr || pack.stdout);
 
-  const [manifest] = JSON.parse(pack.stdout) as [
-    { files: Array<{ path: string }> },
-  ];
+  const manifest = JSON.parse(pack.stdout) as {
+    files: Array<{ path: string }>;
+  };
   assert.equal(
     manifest.files.some(({ path }) => path === "LICENSE"),
     true

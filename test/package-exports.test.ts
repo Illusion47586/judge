@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 test("builds independent ESM entry points", async () => {
-  execFileSync("npm", ["run", "build"], {
+  execFileSync("pnpm", ["build"], {
     cwd: process.cwd(),
     stdio: "pipe",
   });
