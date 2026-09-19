@@ -20,18 +20,60 @@ const DEFAULT_BASE_URL = "https://api.typesafe.ai";
 const DEFAULT_MODEL = "jev-latest";
 const TRAILING_SLASH = /\/$/u;
 
+/** Configures retries for direct Jev rate and capacity responses. */
 export interface RetryOptions {
+  /**
+   * Delay before the first retry in milliseconds.
+   *
+   * @defaultValue 250
+   */
   readonly initialDelayMs?: number;
+  /**
+   * Total number of attempts, including the initial request.
+   *
+   * @remarks Only HTTP `429` and `529` responses are retried. Retrying after a
+   * provider processed a request but its response was lost can cause duplicate
+   * billable work.
+   */
   readonly maxAttempts: number;
+  /**
+   * Maximum exponential backoff delay in milliseconds.
+   *
+   * @defaultValue 5000
+   */
   readonly maxDelayMs?: number;
 }
 
+/** Configures direct requests to the TypeSafe AI Jev API. */
 export interface DirectJevOptions {
+  /** A non-empty, trimmed TypeSafe AI API key. */
   readonly apiKey: string;
+  /**
+   * HTTP(S) API origin without credentials, query parameters, or a fragment.
+   *
+   * @defaultValue `"https://api.typesafe.ai"`
+   */
   readonly baseUrl?: string;
+  /**
+   * Positive maximum response-body size in bytes.
+   *
+   * @defaultValue 8_388_608
+   */
   readonly maxResponseBytes?: number;
+  /**
+   * Jev model requested for each evaluation.
+   *
+   * @defaultValue `"jev-latest"`
+   */
   readonly model?: string;
+  /**
+   * Retry policy for HTTP `429` and `529` responses.
+   *
+   * @remarks Retries are disabled when this property is omitted and may cause
+   * duplicate billable work if an earlier response was lost.
+   */
   readonly retry?: RetryOptions;
+  /** A positive per-evaluation timeout in milliseconds. */
   readonly timeoutMs?: number;
 }
 
@@ -143,6 +185,18 @@ const successfulResult = (
   };
 };
 
+/**
+ * Creates the internal gateway used for direct TypeSafe AI Jev requests.
+ *
+ * @remarks Each evaluation performs remote, potentially billable work. Most
+ * consumers should pass {@link DirectJevOptions} to the package-root
+ * `createJudge` factory instead of calling this transport helper.
+ *
+ * @param options - Direct Jev credentials, limits, model, and retry policy.
+ * @param fetcher - Fetch implementation used to send requests.
+ * @returns A Jev-compatible gateway plugin.
+ * @throws {@link ConfigurationError} if a local option is invalid.
+ */
 export const directJevGateway = (
   options: DirectJevOptions,
   fetcher: Fetcher = globalThis.fetch
