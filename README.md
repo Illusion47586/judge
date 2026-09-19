@@ -17,6 +17,27 @@ closed set of legal outcomes.
 Judge makes those judgments typed, observable, testable, and explicit about
 uncertainty. It does not generate or execute code.
 
+## How Judge differs
+
+Judge is deliberately narrower than the [Vercel AI SDK](https://ai-sdk.dev/docs/introduction)
+and higher-level than TypeSafe AI's official
+[Jev JavaScript SDK](https://www.npmjs.com/package/@typesafe-ai/sdk):
+
+| | Judge | Vercel AI SDK | Jev JavaScript SDK |
+| --- | --- | --- | --- |
+| Primary job | Put bounded semantic decisions inside application control flow | Build AI applications with generation, streaming, tools, agents, and UI integrations | Call Jev's native state-and-questions API directly |
+| Model scope | Provider-neutral core; the default client uses Jev through direct or gateway transports | Broad model and provider ecosystem | Jev through TypeSafe AI |
+| Result | A validated Boolean, choice, or score decision, or the return value of one selected callback | Generated or evaluated model results for the application to compose | Native typed Jev answers and metadata |
+| Control flow | `if()` and `switch()` derive legal outcomes and execute exactly one application-owned callback | General primitives and agent loops; the application defines decision-specific branching | The application maps returned answers to its own branching |
+| Uncertainty | Built-in confidence thresholds and an explicit `uncertain` branch | Exposes model results; decision thresholds and fallback policy are application concerns | Returns Jev probabilities and confidence; the application applies policy |
+| Testing | Includes a deterministic decision mock and validates provider results before callbacks run | General-purpose model and provider test utilities | Direct Jev client; application-level decision mocks are separate |
+
+Use Vercel AI SDK when you need a broad AI application toolkit. Use the Jev SDK
+when you want direct access to Jev's native API. Use Judge when the outcome is a
+closed decision that must safely select application-owned behavior. Judge can
+use Jev directly or through gateways—including Vercel AI Gateway—so these tools
+can be complementary rather than mutually exclusive.
+
 ## Quick start
 
 Judge uses Jev by default. Pass a TypeSafe API key explicitly to use the direct
