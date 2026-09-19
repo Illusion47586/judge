@@ -91,12 +91,14 @@ version declared by `package.json` before installation. Quality jobs will use:
 - `pnpm install --frozen-lockfile` on a cache miss;
 - pnpm-based lint, typecheck, unit-test, build, and package commands; and
 - exact `node_modules` cache keys containing the operating system,
-  architecture, Node version, and `pnpm-lock.yaml` hash.
+  architecture, Node version, `package.json` hash, and `pnpm-lock.yaml` hash.
 
 Cache restore keys will not be used. A cache hit may skip installation only when
 the entire exact key matches. This retains the previously approved
 `node_modules` caching requirement while preventing dependency reuse across
-different lockfiles or runtimes.
+different manifests, lockfiles, or runtimes. Including both manifest and
+lockfile hashes ensures a dependency declaration that forgot to update the
+lockfile cannot reuse a cache and bypass the frozen-install validation.
 
 Release jobs will not restore dependency caches. They will perform fresh frozen
 pnpm installs on GitHub-hosted runners before building or publishing.
@@ -147,8 +149,8 @@ Automated tests will verify:
 - the only executable npm command in maintained configuration is the final
   OIDC `npm publish` transport;
 - CI installs pnpm before dependency installation;
-- CI cache keys hash `pnpm-lock.yaml` and remain exact per OS, architecture,
-  and Node version;
+- CI cache keys hash `package.json` and `pnpm-lock.yaml` and remain exact per
+  OS, architecture, and Node version;
 - release jobs perform uncached frozen installs;
 - the release command writes Changesets tag metadata after publishing;
 - production-only isolated installation succeeds; and

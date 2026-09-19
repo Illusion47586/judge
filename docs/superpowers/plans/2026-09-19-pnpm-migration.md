@@ -17,7 +17,8 @@
 - Use pnpm for installs, project scripts, hooks, tests, examples, packaging, CI, and release orchestration.
 - Allow npm only for the final `npm publish --ignore-scripts` OIDC registry transport.
 - Keep Node.js support at `>=22.18.0`; CI covers Node 22.18.0 and Node 24.
-- Preserve exact-hit `node_modules` caches in quality CI, keyed by OS, architecture, Node version, and `pnpm-lock.yaml`.
+- Preserve exact-hit `node_modules` caches in quality CI, keyed by OS,
+  architecture, Node version, `package.json`, and `pnpm-lock.yaml`.
 - Use fresh, uncached, frozen pnpm installs in release jobs.
 - Never add `NPM_TOKEN`, `NODE_AUTH_TOKEN`, or another npm publication credential.
 - Do not publish a package while executing this plan.
@@ -293,6 +294,7 @@ In the cache test, assert:
 
 ```ts
 assert.ok(workflow.includes("path: node_modules"));
+assert.ok(workflow.includes("hashFiles('package.json')"));
 assert.ok(workflow.includes("hashFiles('pnpm-lock.yaml')"));
 assert.ok(!workflow.includes("restore-keys:"));
 assert.ok(workflow.includes("cache-hit != 'true'"));
@@ -317,7 +319,9 @@ In every job, add pnpm setup after checkout and before project commands:
 - uses: pnpm/action-setup@v6
 ```
 
-Keep `actions/setup-node@v6` with `package-manager-cache: false`. Change each cache key from `hashFiles('package-lock.json')` to `hashFiles('pnpm-lock.yaml')`.
+Keep `actions/setup-node@v6` with `package-manager-cache: false`. Change each
+cache key so it includes both `hashFiles('package.json')` and
+`hashFiles('pnpm-lock.yaml')`; a change to either file must force a cache miss.
 
 Use these commands:
 
