@@ -7,16 +7,21 @@ import {
   directJevGateway,
 } from "./provider/jev/direct.ts";
 import { createJevProvider } from "./provider/jev/provider.ts";
+import type { ContextBudgetOptions } from "./provider/jev/types.ts";
 
 export interface GatewayJevOptions {
   readonly apiKey?: never;
+  readonly contextBudget?: ContextBudgetOptions;
   readonly gateway: GatewayPlugin;
   readonly model?: string;
   readonly timeoutMs?: number;
 }
 
 export type CreateJudgeOptions =
-  | (DirectJevOptions & { readonly gateway?: never })
+  | (DirectJevOptions & {
+      readonly contextBudget?: ContextBudgetOptions;
+      readonly gateway?: never;
+    })
   | GatewayJevOptions;
 
 export const createJudge = (options: CreateJudgeOptions): JudgeClient => {
@@ -41,6 +46,9 @@ export const createJudge = (options: CreateJudgeOptions): JudgeClient => {
   return createCoreJudge({
     provider: createJevProvider({
       gateway,
+      ...(options.contextBudget === undefined
+        ? {}
+        : { contextBudget: options.contextBudget }),
       ...(options.model === undefined ? {} : { model: options.model }),
       ...(options.timeoutMs === undefined
         ? {}
@@ -74,3 +82,7 @@ export type {
   UncertainMeta,
 } from "./core/types.ts";
 export type { DirectJevOptions, RetryOptions } from "./provider/jev/direct.ts";
+export type {
+  ContextBudgetOptions,
+  ContextBudgetWarning,
+} from "./provider/jev/types.ts";

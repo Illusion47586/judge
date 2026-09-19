@@ -17,12 +17,19 @@ import type {
   GatewayRequestOptions,
 } from "../../gateway/types.ts";
 import {
+  normalizeContextBudget,
+  warnForContextBudget,
+} from "./context-budget.ts";
+import {
   normalizeBooleanAnswer,
   normalizeChoiceAnswer,
   normalizeScoreAnswer,
 } from "./normalize.ts";
 import { serializeState } from "./serialize.ts";
-import type { CreateJevProviderOptions } from "./types.ts";
+import type {
+  CreateJevProviderOptions,
+  NormalizedContextBudget,
+} from "./types.ts";
 
 const requireIdentifier = (value: unknown, name: string): string => {
   if (
@@ -60,8 +67,11 @@ const throwIfAborted = (signal?: AbortSignal): void => {
 const evaluate = async (
   gateway: GatewayPlugin,
   request: GatewayEvaluationRequest,
-  options: GatewayRequestOptions | undefined
+  options: GatewayRequestOptions | undefined,
+  contextBudget: NormalizedContextBudget | undefined
 ): Promise<GatewayEvaluationResult> => {
+  throwIfAborted(options?.signal);
+  await warnForContextBudget(request, contextBudget);
   throwIfAborted(options?.signal);
   try {
     return await gateway.evaluate(request, options);
@@ -110,6 +120,7 @@ export const createJevProvider = (
   }
   const gatewayId = requireIdentifier(gateway.id, "Gateway id");
   const model = requireIdentifier(options.model ?? gateway.model, "Jev model");
+  const contextBudget = normalizeContextBudget(options.contextBudget);
   if (
     timeoutMs !== undefined &&
     (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
@@ -122,16 +133,18 @@ export const createJevProvider = (
     boolean: async <S>(input: BooleanInput<S>) => {
       requireCapability(gateway, "boolean");
       const state = serializeState(input.context);
+      const request: GatewayEvaluationRequest = {
+        model,
+        questions: {
+          decision: { instructions: input.condition, type: "noul" },
+        },
+        state,
+      };
       const result = await evaluate(
         gateway,
-        {
-          model,
-          questions: {
-            decision: { instructions: input.condition, type: "noul" },
-          },
-          state,
-        },
-        requestOptions(input.signal, timeoutMs)
+        request,
+        requestOptions(input.signal, timeoutMs),
+        contextBudget
       );
       return normalizeBooleanAnswer(result, normalizationContext);
     },
@@ -141,22 +154,24 @@ export const createJevProvider = (
     ) => {
       requireCapability(gateway, "choice");
       const state = serializeState(input.context);
+      const request: GatewayEvaluationRequest = {
+        model,
+        questions: {
+          decision: {
+            criteria: Object.fromEntries(
+              input.options.map((option) => [option, option])
+            ),
+            instructions: input.question,
+            type: "choice",
+          },
+        },
+        state,
+      };
       const result = await evaluate(
         gateway,
-        {
-          model,
-          questions: {
-            decision: {
-              criteria: Object.fromEntries(
-                input.options.map((option) => [option, option])
-              ),
-              instructions: input.question,
-              type: "choice",
-            },
-          },
-          state,
-        },
-        requestOptions(input.signal, timeoutMs)
+        request,
+        requestOptions(input.signal, timeoutMs),
+        contextBudget
       );
       return normalizeChoiceAnswer(result, input.options, normalizationContext);
     },
@@ -167,20 +182,22 @@ export const createJevProvider = (
       requireCapability(gateway, "score");
       const state = serializeState(input.context);
       const levels = [...input.levels] as unknown as L;
+      const request: GatewayEvaluationRequest = {
+        model,
+        questions: {
+          decision: {
+            criteria: levels,
+            instructions: input.question,
+            type: "score",
+          },
+        },
+        state,
+      };
       const result = await evaluate(
         gateway,
-        {
-          model,
-          questions: {
-            decision: {
-              criteria: levels,
-              instructions: input.question,
-              type: "score",
-            },
-          },
-          state,
-        },
-        requestOptions(input.signal, timeoutMs)
+        request,
+        requestOptions(input.signal, timeoutMs),
+        contextBudget
       );
       return normalizeScoreAnswer(result, levels, normalizationContext);
     },

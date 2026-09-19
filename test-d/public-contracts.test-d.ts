@@ -1,8 +1,12 @@
 import type {
   ChoiceDecision,
+  ContextBudgetOptions,
+  ContextBudgetWarning,
   JudgeClient,
   ScoreDecision,
 } from "@brkn-labs/judge";
+import { createJudge } from "@brkn-labs/judge";
+import type { GatewayPlugin } from "@brkn-labs/judge/gateway/custom";
 
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type Expect<T extends true> = T;
@@ -109,3 +113,24 @@ export type ScoreContract = Expect<
 judge.choice({ context: {}, options: [], question: "Empty" });
 // @ts-expect-error score requires at least two levels.
 judge.score({ context: {}, levels: ["only"], question: "Too short" });
+
+declare const gateway: GatewayPlugin;
+const budget: ContextBudgetOptions = {
+  maxTokens: 32_768,
+  onWarning: (warning) => {
+    const exact: ContextBudgetWarning = warning;
+    return Promise.resolve(exact).then(() => undefined);
+  },
+  warnAt: 0.8,
+};
+createJudge({ contextBudget: budget, gateway });
+// @ts-expect-error maxTokens is required.
+createJudge({ contextBudget: { onWarning: () => undefined }, gateway });
+createJudge({
+  contextBudget: {
+    maxTokens: 32_768,
+    // @ts-expect-error warning delivery must be a callback.
+    onWarning: "console",
+  },
+  gateway,
+});
