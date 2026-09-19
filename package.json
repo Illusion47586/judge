@@ -1,6 +1,6 @@
 {
   "name": "@brkn-labs/judge",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Probabilistic judgment. Deterministic execution.",
   "homepage": "https://github.com/Illusion47586/judge#readme",
   "bugs": {
