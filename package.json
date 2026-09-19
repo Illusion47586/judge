@@ -67,7 +67,7 @@
     "fix": "ultracite fix",
     "lint": "ultracite check",
     "prepack": "npm run build",
-    "prepare": "husky",
+    "prepare": "node .husky/install.mjs",
     "release": "npm run build && changeset publish",
     "test": "node --test --test-concurrency=1",
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",

@@ -1,9 +1,36 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 const COMMITLINT_CONFIG = /@commitlint\/config-conventional/u;
 const INITIAL_RELEASE = /"@brkn-labs\/judge": minor/u;
+const INVALID_COMMIT_MESSAGE = /type may not be empty/u;
+const EXECUTABLE_DIVISORS = [64, 8, 1] as const;
+
+const hasExecutableBit = (file: string): boolean => {
+  const { mode } = statSync(file);
+
+  return EXECUTABLE_DIVISORS.some(
+    (divisor) => Math.floor(mode / divisor) % 2 === 1
+  );
+};
+
+const runCommitlint = (message: string) =>
+  spawnSync("npm", ["run", "commitlint", "--", "--verbose"], {
+    encoding: "utf8",
+    input: `${message}\n`,
+  });
 
 const readJson = (file: string): Record<string, unknown> =>
   JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
@@ -31,7 +58,7 @@ test("package is public and exposes release commands", () => {
   assert.equal(scripts.changeset, "changeset");
   assert.equal(scripts["changeset:status"], "changeset status");
   assert.equal(scripts.commitlint, "commitlint");
-  assert.equal(scripts.prepare, "husky");
+  assert.equal(scripts.prepare, "node .husky/install.mjs");
   assert.equal(scripts["version-packages"], "changeset version");
   assert.equal(scripts.release, "npm run build && changeset publish");
 });
@@ -58,4 +85,46 @@ test("local hooks enforce quality and Conventional Commits", () => {
   assert.equal(preCommit, "npm run lint && npm run typecheck\n");
   assert.equal(commitMessage, 'npm run commitlint -- --edit "$1"\n');
   assert.match(commitlint, COMMITLINT_CONFIG);
+  assert.equal(hasExecutableBit(".husky/pre-commit"), true);
+  assert.equal(hasExecutableBit(".husky/commit-msg"), true);
+});
+
+test("Commitlint accepts valid messages and rejects invalid messages", () => {
+  const valid = runCommitlint("feat: add release automation");
+  const invalid = runCommitlint("add release automation");
+
+  assert.equal(valid.status, 0, valid.stderr || valid.stdout);
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stdout, INVALID_COMMIT_MESSAGE);
+});
+
+test("production-only installs succeed without Husky", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "judge-production-install-"));
+
+  try {
+    mkdirSync(join(fixture, ".husky"));
+    copyFileSync("package.json", join(fixture, "package.json"));
+    copyFileSync("package-lock.json", join(fixture, "package-lock.json"));
+    copyFileSync(".husky/install.mjs", join(fixture, ".husky/install.mjs"));
+
+    const safeEnvironment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key !== "NODE_AUTH_TOKEN" && key !== "NPM_TOKEN"
+      )
+    );
+    const install = spawnSync(
+      "npm",
+      ["ci", "--omit=dev", "--no-audit", "--no-fund"],
+      {
+        cwd: fixture,
+        encoding: "utf8",
+        env: { ...safeEnvironment, NODE_ENV: "production" },
+      }
+    );
+
+    assert.equal(install.status, 0, install.stderr || install.stdout);
+    assert.equal(existsSync(join(fixture, "node_modules/husky")), false);
+  } finally {
+    rmSync(fixture, { force: true, recursive: true });
+  }
 });
