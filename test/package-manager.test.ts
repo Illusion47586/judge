@@ -3,8 +3,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const NPM_COMMAND = /\b(?:npm|npx)\b/u;
-const NPM_RUNNER_COMMAND =
-  /\b(?:npm|npx)\s+(?:ci|exec|install|pack|run|test)\b/u;
 const PACKAGES_DECLARATION = /^packages:/mu;
 const PNPM_WORKSPACE_CONFIG = `minimumReleaseAgeExclude:
   - '@ai-sdk/gateway@4.0.87'
@@ -56,8 +54,8 @@ test("package scripts use pnpm except for the OIDC upload", () => {
   }
 });
 
-test("repository hooks and scripts have no npm runner commands", () => {
+test("repository hooks, scripts, and workflows have no npm commands", () => {
   for (const file of repositoryCommandFiles) {
-    assert.doesNotMatch(readFileSync(file, "utf8"), NPM_RUNNER_COMMAND, file);
+    assert.doesNotMatch(readFileSync(file, "utf8"), NPM_COMMAND, file);
   }
 });

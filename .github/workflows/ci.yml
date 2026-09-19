@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-24-${{ hashFiles('pnpm-lock.yaml') }}
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-24-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
       - name: Install dependencies
         if: steps.node-modules.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ matrix.node }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ matrix.node }}-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
       - name: Install dependencies
         if: steps.node-modules.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
