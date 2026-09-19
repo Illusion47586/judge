@@ -13,18 +13,35 @@ const readChangeset: ChangesetReader = (file) => readFileSync(file, "utf8");
 
 const hasValidContents = (content: string): boolean => {
   const normalized = content.replaceAll("\r\n", "\n");
-  if (normalized === "---\n---\n") {
+  const lines = normalized.split("\n");
+  if (lines[0] !== "---") {
+    return false;
+  }
+
+  const closingDelimiter = lines.findIndex(
+    (line, index) => index > 0 && line === "---"
+  );
+  if (closingDelimiter === -1) {
+    return false;
+  }
+
+  const entries = lines
+    .slice(1, closingDelimiter)
+    .filter((line) => line.trim().length > 0);
+  if (entries.length === 0) {
     return true;
   }
 
-  const lines = normalized.split("\n");
+  const [entry] = entries;
+  const summary = lines
+    .slice(closingDelimiter + 1)
+    .join("\n")
+    .trim();
   return (
-    lines[0] === "---" &&
-    lines[1] !== undefined &&
-    JUDGE_RELEASE.test(lines[1]) &&
-    lines[2] === "---" &&
-    lines[3] === "" &&
-    lines.slice(4).join("\n").trim().length > 0
+    entries.length === 1 &&
+    entry !== undefined &&
+    JUDGE_RELEASE.test(entry) &&
+    summary.length > 0
   );
 };
 

@@ -35,14 +35,34 @@ const reader =
     return content;
   };
 
-test("accepts canonical empty and valid normal added Changesets", () => {
+test("accepts generated, compact, and summarized empty Changesets", () => {
   assert.equal(
     hasChangesetDecision(
       ["A\t.changeset/quiet-docs-rest.md"],
-      reader({ ".changeset/quiet-docs-rest.md": "---\n---\n" })
+      reader({ ".changeset/quiet-docs-rest.md": "---\n\n---\n\n\n" })
     ),
     true
   );
+  assert.equal(
+    hasChangesetDecision(
+      ["A\t.changeset/compact-empty.md"],
+      reader({ ".changeset/compact-empty.md": "---\n---\n" })
+    ),
+    true
+  );
+  assert.equal(
+    hasChangesetDecision(
+      ["A\t.changeset/summarized-empty.md"],
+      reader({
+        ".changeset/summarized-empty.md":
+          "---\n\n---\n\nNo package release is needed.\n",
+      })
+    ),
+    true
+  );
+});
+
+test("accepts one valid package entry with a nonblank summary", () => {
   assert.equal(
     hasChangesetDecision(
       ["A\t.changeset/bright-judges-smile.md"],
@@ -82,10 +102,13 @@ test("ignores config, README, modified, deleted, and nested files", () => {
   );
 });
 
-test("rejects empty, malformed, wrong-package, wrong-bump, and summaryless files", () => {
+test("rejects malformed, unknown, multiple, invalid, and summaryless entries", () => {
   const invalidChangesets = [
     "",
     "not frontmatter\n",
+    "---\n\nMissing closing delimiter.\n",
+    '---\n"@brkn-labs/judge": minor\n"@brkn-labs/judge": patch\n---\n\nSummary.\n',
+    '---\n"@brkn-labs/judge": minor\nunknown: value\n---\n\nSummary.\n',
     '---\n"other-package": minor\n---\n\nSummary.\n',
     '---\n"@brkn-labs/judge": huge\n---\n\nSummary.\n',
     '---\n"@brkn-labs/judge": patch\n---\n\n   \n',
