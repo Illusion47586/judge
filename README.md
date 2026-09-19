@@ -144,6 +144,20 @@ Direct TypeSafe retries are off by default. If you opt into `retry`, only HTTP
 429 and 529 are retried, and a lost response can result in more than one billed
 evaluation.
 
+## Examples
+
+The [`examples/`](examples/README.md) directory contains focused examples for
+every Judge primitive plus customer-support, transaction-risk, incident, and
+agent-routing scenarios. They all use Vercel AI Gateway.
+
+```sh
+cp .env.example .env
+npm run example:switch
+```
+
+`npm run typecheck:examples` checks every example without making remote calls.
+`npm run example:all` performs nine remote, potentially billable evaluations.
+
 ## Safety boundary
 
 Judge:

@@ -7,6 +7,7 @@ const envVariantsRule = /^\.env\.\*$/mu;
 const envExampleException = /^!\.env\.example$/mu;
 const sharedHarnessImport = /from "\.\/_shared\.ts"/u;
 const evaluationCall = /\bjudge\.(?:boolean|if|choice|switch|score)\s*\(/gu;
+const finalExampleCommand = /09-agent-tool-routing\.ts/u;
 
 const exampleFiles = [
   "examples/01-boolean.ts",
@@ -36,4 +37,25 @@ test("every numbered example uses the shared harness exactly once", () => {
     assert.match(source, sharedHarnessImport);
     assert.equal([...source.matchAll(evaluationCall)].length, 1, file);
   }
+});
+
+test("package scripts expose typed and live example commands", () => {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const scripts = packageJson.scripts ?? {};
+  const allExamplesScript = scripts["example:all"];
+
+  assert.equal(typeof scripts["typecheck:examples"], "string");
+  assert.equal(typeof scripts["example:boolean"], "string");
+  assert.equal(typeof scripts["example:if"], "string");
+  assert.equal(typeof scripts["example:choice"], "string");
+  assert.equal(typeof scripts["example:switch"], "string");
+  assert.equal(typeof scripts["example:score"], "string");
+  assert.equal(typeof scripts["example:support"], "string");
+  assert.equal(typeof scripts["example:risk"], "string");
+  assert.equal(typeof scripts["example:incident"], "string");
+  assert.equal(typeof scripts["example:agent"], "string");
+  assert.ok(typeof allExamplesScript === "string");
+  assert.match(allExamplesScript, finalExampleCommand);
 });
