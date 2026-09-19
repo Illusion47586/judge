@@ -10,6 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/Illusion47586/judge.git"
   },
+  "license": "MIT",
   "sideEffects": false,
   "type": "module",
   "exports": {

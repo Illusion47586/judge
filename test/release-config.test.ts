@@ -16,6 +16,9 @@ import test from "node:test";
 const COMMITLINT_CONFIG = /@commitlint\/config-conventional/u;
 const INITIAL_RELEASE = /"@brkn-labs\/judge": minor/u;
 const INVALID_COMMIT_MESSAGE = /type may not be empty/u;
+const MIT_COPYRIGHT = /Copyright \(c\) 2026 Dhruv Tiwari/u;
+const MIT_GRANT =
+  /Permission is hereby granted, free of charge, to any person obtaining a copy/u;
 const EXECUTABLE_DIVISORS = [64, 8, 1] as const;
 
 const hasExecutableBit = (file: string): boolean => {
@@ -42,6 +45,7 @@ test("package is public and exposes release commands", () => {
   const repository = packageJson.repository as Record<string, string>;
 
   assert.equal("private" in packageJson, false);
+  assert.equal(packageJson.license, "MIT");
   assert.equal(publishConfig.access, "public");
   assert.equal(repository.type, "git");
   assert.equal(
@@ -127,4 +131,25 @@ test("production-only installs succeed without Husky", () => {
   } finally {
     rmSync(fixture, { force: true, recursive: true });
   }
+});
+
+test("package includes the MIT license", () => {
+  const license = readFileSync("LICENSE", "utf8");
+  const pack = spawnSync(
+    "npm",
+    ["pack", "--dry-run", "--json", "--ignore-scripts"],
+    { encoding: "utf8" }
+  );
+
+  assert.match(license, MIT_COPYRIGHT);
+  assert.match(license, MIT_GRANT);
+  assert.equal(pack.status, 0, pack.stderr || pack.stdout);
+
+  const [manifest] = JSON.parse(pack.stdout) as [
+    { files: Array<{ path: string }> },
+  ];
+  assert.equal(
+    manifest.files.some(({ path }) => path === "LICENSE"),
+    true
+  );
 });
