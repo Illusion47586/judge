@@ -1,0 +1,84 @@
+{
+  "name": "@brkn-labs/judge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Probabilistic judgment. Deterministic execution.",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./gateway/custom": {
+      "types": "./dist/gateway/custom.d.ts",
+      "import": "./dist/gateway/custom.js"
+    },
+    "./gateway/vercel": {
+      "types": "./dist/gateway/vercel.d.ts",
+      "import": "./dist/gateway/vercel.js"
+    },
+    "./gateway/cloudflare": {
+      "types": "./dist/gateway/cloudflare.d.ts",
+      "import": "./dist/gateway/cloudflare.js"
+    },
+    "./gateway/openrouter": {
+      "types": "./dist/gateway/openrouter.d.ts",
+      "import": "./dist/gateway/openrouter.js"
+    },
+    "./mock": {
+      "types": "./dist/mock/index.d.ts",
+      "import": "./dist/mock/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "check": "npm run lint && npm run typecheck && npm run test:unit",
+    "clean": "node --eval \"import fs from 'node:fs'; fs.rmSync('dist', { recursive: true, force: true })\"",
+    "fix": "ultracite fix",
+    "lint": "ultracite check",
+    "prepack": "npm run build",
+    "test": "node --test --test-concurrency=1",
+    "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
+    "test:unit": "node --test --test-concurrency=1",
+    "test:watch": "node --test --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@ai-sdk/gateway": "^4.0.87",
+    "@biomejs/biome": "^2.5.12",
+    "@types/node": "^26.6.1",
+    "ai": "^7.0.107",
+    "cloudflare": "^7.1.0",
+    "typescript": "^7.0.2",
+    "ultracite": "^7.12.0"
+  },
+  "peerDependencies": {
+    "@ai-sdk/gateway": "^4.0.87",
+    "ai": "^7.0.107",
+    "cloudflare": "^7.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/gateway": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "cloudflare": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

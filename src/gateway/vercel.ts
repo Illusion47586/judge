@@ -1,0 +1,219 @@
+import { createGateway, type GatewayEvaluationModelId } from "@ai-sdk/gateway";
+import { experimental_evaluate } from "ai";
+
+import { ConfigurationError } from "../core/errors.ts";
+import { createRequestSignal } from "../provider/jev/http.ts";
+import { defineGateway } from "./custom.ts";
+import { normalizeGatewayError } from "./errors.ts";
+import type {
+  GatewayEvaluationRequest,
+  GatewayPlugin,
+  GatewayRequestOptions,
+  JevQuestion,
+} from "./types.ts";
+
+const DEFAULT_MODEL = "typesafe-ai/jev";
+
+export interface VercelGatewayOptions {
+  readonly apiKey: string;
+  readonly baseUrl?: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly model?: string;
+}
+
+interface EvaluationInput {
+  abortSignal?: AbortSignal;
+  headers?: Record<string, string>;
+  maxRetries: number;
+  model: unknown;
+  questions: Record<string, unknown>;
+  state: unknown;
+}
+
+type Evaluator = (input: EvaluationInput) => Promise<unknown>;
+type ModelFactory = (model: string) => unknown;
+
+interface TestDependencies {
+  evaluate?: Evaluator;
+  modelFactory?: ModelFactory;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const validateString = (value: unknown, name: string): string => {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.trim() !== value
+  ) {
+    throw new ConfigurationError(
+      `${name} must be a non-empty, trimmed string.`
+    );
+  }
+  return value;
+};
+
+const toAiQuestion = (question: JevQuestion): Record<string, unknown> => ({
+  ...question,
+  type: question.type === "noul" ? "boolean" : question.type,
+});
+
+const answerConfidence = (
+  probabilities: unknown,
+  selected: unknown
+): unknown =>
+  isRecord(probabilities) && typeof selected === "string"
+    ? probabilities[selected]
+    : undefined;
+
+const toJevAnswer = (answer: unknown, question: JevQuestion | undefined) => {
+  if (!isRecord(answer)) {
+    return answer;
+  }
+  if (answer.type === "boolean") {
+    return { noul: answer.probability, type: "noul" };
+  }
+  if (answer.type === "choice") {
+    return {
+      choice: answer.choice,
+      confidence: answerConfidence(answer.probabilities, answer.choice),
+      probabilities: answer.probabilities,
+      type: "choice",
+    };
+  }
+  if (answer.type === "score") {
+    const criteria = question?.type === "score" ? question.criteria : [];
+    const { probabilities } = answer;
+    const numericProbabilities = isRecord(probabilities)
+      ? Object.values(probabilities).filter(
+          (value): value is number => typeof value === "number"
+        )
+      : [];
+    return {
+      confidence:
+        numericProbabilities.length === 0
+          ? undefined
+          : Math.max(...numericProbabilities),
+      legend: Object.fromEntries(
+        criteria.map((level, index) => [index, level])
+      ),
+      probabilities,
+      score: answer.score,
+      type: "score",
+    };
+  }
+  return answer;
+};
+
+const convertResult = (
+  value: unknown,
+  request: GatewayEvaluationRequest,
+  startedAt: number
+) => {
+  if (!(isRecord(value) && isRecord(value.answers))) {
+    return { body: value };
+  }
+  const answers = Object.fromEntries(
+    Object.entries(value.answers).map(([id, answer]) => [
+      id,
+      toJevAnswer(answer, request.questions[id]),
+    ])
+  );
+  const response = isRecord(value.response) ? value.response : undefined;
+  const usage = isRecord(value.usage) ? value.usage : undefined;
+  return {
+    body: { answers },
+    metadata: {
+      gateway: "vercel",
+      latencyMs: performance.now() - startedAt,
+      model: request.model,
+      ...(Object.hasOwn(value, "providerMetadata")
+        ? { raw: value.providerMetadata }
+        : {}),
+      ...(typeof response?.id === "string" ? { requestId: response.id } : {}),
+      ...(typeof response?.modelId === "string"
+        ? { resolvedModel: response.modelId }
+        : {}),
+      ...(usage
+        ? {
+            usage: {
+              ...(typeof usage.inputTokens === "number"
+                ? { inputTokens: usage.inputTokens }
+                : {}),
+              ...(typeof usage.outputTokens === "number"
+                ? { outputTokens: usage.outputTokens }
+                : {}),
+            },
+          }
+        : {}),
+    },
+  };
+};
+
+export const vercelGateway = (options: VercelGatewayOptions): GatewayPlugin => {
+  const apiKey = validateString(options.apiKey, "apiKey");
+  const model = validateString(options.model ?? DEFAULT_MODEL, "model");
+  const dependencies = options as VercelGatewayOptions & TestDependencies;
+  const provider = createGateway({
+    apiKey,
+    ...(options.baseUrl ? { baseURL: options.baseUrl } : {}),
+    ...(options.headers ? { headers: { ...options.headers } } : {}),
+  });
+  const modelFactory: ModelFactory =
+    dependencies.modelFactory ??
+    ((id) => provider.evaluation(id as GatewayEvaluationModelId));
+  const evaluator: Evaluator =
+    dependencies.evaluate ??
+    ((input) => experimental_evaluate(input as never) as Promise<unknown>);
+
+  return defineGateway({
+    capabilities: {
+      batching: true,
+      boolean: true,
+      choice: true,
+      customHeaders: true,
+      jev: true,
+      score: true,
+    },
+    evaluate: async (
+      request: GatewayEvaluationRequest,
+      requestOptions?: GatewayRequestOptions
+    ) => {
+      const startedAt = performance.now();
+      const requestSignal = createRequestSignal(
+        requestOptions?.signal,
+        requestOptions?.timeoutMs
+      );
+      try {
+        const headers = { ...options.headers, ...requestOptions?.headers };
+        const result = await evaluator({
+          ...(requestSignal.signal
+            ? { abortSignal: requestSignal.signal }
+            : {}),
+          ...(Object.keys(headers).length === 0 ? {} : { headers }),
+          maxRetries: 0,
+          model: modelFactory(request.model),
+          questions: Object.fromEntries(
+            Object.entries(request.questions).map(([id, question]) => [
+              id,
+              toAiQuestion(question),
+            ])
+          ),
+          state: request.state,
+        });
+        return convertResult(result, request, startedAt);
+      } catch (cause) {
+        return normalizeGatewayError(
+          cause,
+          requestOptions?.signal,
+          requestSignal.timedOut()
+        );
+      } finally {
+        requestSignal.cleanup();
+      }
+    },
+    id: "vercel",
+    model,
+  });
+};
