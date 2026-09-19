@@ -885,7 +885,10 @@ publisher and rerun the failed publish job; do not create another version bump.
 If `npm publish --ignore-scripts` succeeds but tag creation fails, rerun the
 failed publish job. The retry is safe because the helper confirms the exact
 published package name and version before skipping upload and emitting tag
-metadata. A mismatch or malformed registry response fails closed.
+metadata. If the matching tag already exists and Changesets emits no event, the
+helper appends the exact validated root-package event to `CHANGESETS_OUTPUT`.
+Changesets Action v2 warns on the existing ref and continues to create the
+missing GitHub release. Conflicting or malformed output fails closed.
 ```
 
 - [ ] **Step 6: Verify release automation and docs**

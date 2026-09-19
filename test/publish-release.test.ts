@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -13,6 +16,9 @@ const MALFORMED_METADATA = /registry metadata must contain/u;
 const UNEXPECTED_STATUS = /unexpected status 503/u;
 const NETWORK_UNAVAILABLE = /network unavailable/u;
 const PUBLISH_FAILED = /publish failed/u;
+const INVALID_CHANGESETS_OUTPUT =
+  /Changesets output contains invalid|Changesets output contains an invalid/u;
+const EXPECTED_TAG_EVENT = `{"type":"git-tag","tag":"v${PACKAGE.version}","packageName":"${PACKAGE.name}"}\n`;
 
 const recordingRunner = () => {
   const calls: Array<{ command: string; arguments_: readonly string[] }> = [];
@@ -126,4 +132,91 @@ test("a failed upload never creates a tag", async () => {
   assert.deepEqual(calls, [
     { arguments_: ["publish", "--ignore-scripts"], command: "npm" },
   ]);
+});
+
+test("appends the exact tag event when a pre-existing tag emits none", async () => {
+  const fixture = mkdtempSync(join(tmpdir(), "judge-changesets-output-"));
+  const changesetsOutputPath = join(fixture, "output.ndjson");
+  writeFileSync(changesetsOutputPath, "");
+
+  try {
+    const { runCommand } = recordingRunner();
+    const fetchVersion: typeof fetch = () =>
+      Promise.resolve(Response.json(PACKAGE));
+
+    await publishRelease(PACKAGE, {
+      changesetsOutputPath,
+      fetchVersion,
+      runCommand,
+    });
+
+    assert.equal(
+      readFileSync(changesetsOutputPath, "utf8"),
+      EXPECTED_TAG_EVENT
+    );
+  } finally {
+    rmSync(fixture, { force: true, recursive: true });
+  }
+});
+
+test("preserves one exact existing tag event without duplicating it", async () => {
+  const fixture = mkdtempSync(join(tmpdir(), "judge-changesets-output-"));
+  const changesetsOutputPath = join(fixture, "output.ndjson");
+  writeFileSync(changesetsOutputPath, EXPECTED_TAG_EVENT);
+
+  try {
+    const { runCommand } = recordingRunner();
+    const fetchVersion: typeof fetch = () =>
+      Promise.resolve(Response.json(PACKAGE));
+
+    await publishRelease(PACKAGE, {
+      changesetsOutputPath,
+      fetchVersion,
+      runCommand,
+    });
+
+    assert.equal(
+      readFileSync(changesetsOutputPath, "utf8"),
+      EXPECTED_TAG_EVENT
+    );
+  } finally {
+    rmSync(fixture, { force: true, recursive: true });
+  }
+});
+
+test("conflicting or malformed Changesets output fails closed", async () => {
+  const invalidOutputs = [
+    '{"type":"git-tag","tag":"v9.9.9","packageName":"@brkn-labs/judge"}\n',
+    "not-json\n",
+    `${EXPECTED_TAG_EVENT}${EXPECTED_TAG_EVENT}`,
+  ] as const;
+
+  await Promise.all(
+    invalidOutputs.map(async (existingOutput) => {
+      const fixture = mkdtempSync(join(tmpdir(), "judge-changesets-output-"));
+      const changesetsOutputPath = join(fixture, "output.ndjson");
+      writeFileSync(changesetsOutputPath, existingOutput);
+
+      try {
+        const { runCommand } = recordingRunner();
+        const fetchVersion: typeof fetch = () =>
+          Promise.resolve(Response.json(PACKAGE));
+
+        await assert.rejects(
+          publishRelease(PACKAGE, {
+            changesetsOutputPath,
+            fetchVersion,
+            runCommand,
+          }),
+          INVALID_CHANGESETS_OUTPUT
+        );
+        assert.equal(
+          readFileSync(changesetsOutputPath, "utf8"),
+          existingOutput
+        );
+      } finally {
+        rmSync(fixture, { force: true, recursive: true });
+      }
+    })
+  );
 });

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { appendFile, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const REGISTRY_ORIGIN = "https://registry.npmjs.org";
@@ -17,6 +17,7 @@ export type ReleaseCommandRunner = (
 ) => Promise<void>;
 
 export type PublishReleaseDependencies = Readonly<{
+  changesetsOutputPath?: string;
   fetchVersion: typeof fetch;
   runCommand: ReleaseCommandRunner;
 }>;
@@ -45,6 +46,89 @@ const validateIdentity = (
   }
 
   return { name: value.name, version: value.version };
+};
+
+type GitTagEvent = Readonly<{
+  packageName: string;
+  tag: string;
+  type: "git-tag";
+}>;
+
+const expectedTagEvent = ({ name, version }: PackageIdentity): GitTagEvent => ({
+  packageName: name,
+  tag: `v${version}`,
+  type: "git-tag",
+});
+
+const isExactTagEvent = (value: unknown, expected: GitTagEvent): boolean => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const keys = Object.keys(value).toSorted();
+  return (
+    keys.length === 3 &&
+    keys[0] === "packageName" &&
+    keys[1] === "tag" &&
+    keys[2] === "type" &&
+    "packageName" in value &&
+    value.packageName === expected.packageName &&
+    "tag" in value &&
+    value.tag === expected.tag &&
+    "type" in value &&
+    value.type === expected.type
+  );
+};
+
+const isMissingFile = (error: unknown): boolean =>
+  error instanceof Error && "code" in error && error.code === "ENOENT";
+
+const reconcileChangesetsOutput = async (
+  outputPath: string | undefined,
+  identity: PackageIdentity
+): Promise<void> => {
+  if (outputPath === undefined) {
+    return;
+  }
+
+  let existing = "";
+  try {
+    existing = await readFile(outputPath, "utf8");
+  } catch (error: unknown) {
+    if (!isMissingFile(error)) {
+      throw error;
+    }
+  }
+
+  const records = existing
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const expected = expectedTagEvent(identity);
+
+  if (records.length === 1) {
+    let event: unknown;
+    try {
+      event = JSON.parse(records[0] ?? "");
+    } catch (error: unknown) {
+      throw new Error("The Changesets output contains an invalid event.", {
+        cause: error,
+      });
+    }
+
+    if (isExactTagEvent(event, expected)) {
+      return;
+    }
+    throw new Error("The Changesets output contains an invalid event.");
+  }
+
+  if (records.length > 1) {
+    throw new Error("The Changesets output contains invalid events.");
+  }
+
+  const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  const serialized = `{"type":"git-tag","tag":${JSON.stringify(expected.tag)},"packageName":${JSON.stringify(expected.packageName)}}\n`;
+  await appendFile(outputPath, `${separator}${serialized}`, "utf8");
 };
 
 export const publishRelease = async (
@@ -82,6 +166,7 @@ export const publishRelease = async (
   }
 
   await dependencies.runCommand("pnpm", ["exec", "changeset", "git-tag"]);
+  await reconcileChangesetsOutput(dependencies.changesetsOutputPath, expected);
 };
 
 const runCommand: ReleaseCommandRunner = (command, arguments_) =>
@@ -108,7 +193,9 @@ const main = async (): Promise<void> => {
   const packageJson = JSON.parse(
     await readFile("package.json", "utf8")
   ) as unknown;
+  const changesetsOutputPath = process.env.CHANGESETS_OUTPUT;
   await publishRelease(validateIdentity(packageJson, "package.json"), {
+    ...(changesetsOutputPath === undefined ? {} : { changesetsOutputPath }),
     fetchVersion: fetch,
     runCommand,
   });

@@ -144,9 +144,13 @@ is the sole exception: `npm publish --ignore-scripts` uses npm trusted
 publishing only after the exact version returns 404. An exact existing version
 skips upload, while mismatched or malformed metadata fails closed. After either
 safe path, `pnpm exec changeset git-tag` reports release metadata to the
-Changesets v2 publish action. The workflow uses a GitHub-hosted runner,
-a Node/npm version that supports npm trusted publishing, and `registry-url` for
-npm. It defines no npm token and has no token fallback.
+Changesets v2 publish action. The helper then validates that
+`CHANGESETS_OUTPUT`, when present, contains exactly the expected root-package
+tag event. It preserves one exact event, appends it when an existing tag caused
+the CLI to emit none, and fails closed on conflicting or malformed events. The
+workflow uses a GitHub-hosted runner, a Node/npm version that supports npm
+trusted publishing, and `registry-url` for npm. It defines no npm token and has
+no token fallback.
 
 Publishing therefore fails closed until OIDC is bootstrapped. The one-time
 operator sequence is:
