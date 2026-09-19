@@ -5,9 +5,11 @@ import {
   isRateLimited,
   parseDelay,
   runExamples,
+  selectEnvironmentFile,
 } from "../scripts/run-examples.ts";
 
 const DELAY_ERROR = /delay/u;
+const ENV_EXAMPLE_ERROR = /\.env\.example/u;
 
 test("runs examples in order with delays only between examples", async () => {
   const events: string[] = [];
@@ -144,4 +146,23 @@ test("parses non-negative integer delays", () => {
   for (const value of ["-1", "1.5", "nope"]) {
     assert.throws(() => parseDelay(value, "delay", 15_000), DELAY_ERROR);
   }
+});
+
+test("prefers .env.local without reading environment files", () => {
+  const checked: string[] = [];
+  const selected = selectEnvironmentFile((file) => {
+    checked.push(file);
+    return file === ".env.local" || file === ".env";
+  });
+
+  assert.equal(selected, ".env.local");
+  assert.deepEqual(checked, [".env.local"]);
+});
+
+test("falls back to .env and rejects a missing environment", () => {
+  assert.equal(
+    selectEnvironmentFile((file) => file === ".env"),
+    ".env"
+  );
+  assert.throws(() => selectEnvironmentFile(() => false), ENV_EXAMPLE_ERROR);
 });

@@ -7,7 +7,8 @@ const envVariantsRule = /^\.env\.\*$/mu;
 const envExampleException = /^!\.env\.example$/mu;
 const sharedHarnessImport = /from "\.\/_shared\.ts"/u;
 const evaluationCall = /\bjudge\.(?:boolean|if|choice|switch|score)\s*\(/gu;
-const finalExampleCommand = /09-agent-tool-routing\.ts/u;
+const aggregateRunnerCommand = /scripts\/run-examples\.ts/u;
+const finalExampleCommand = /examples\/09-agent-tool-routing\.ts/u;
 
 const exampleFiles = [
   "examples/01-boolean.ts",
@@ -57,5 +58,6 @@ test("package scripts expose typed and live example commands", () => {
   assert.equal(typeof scripts["example:incident"], "string");
   assert.equal(typeof scripts["example:agent"], "string");
   assert.ok(typeof allExamplesScript === "string");
-  assert.match(allExamplesScript, finalExampleCommand);
+  assert.match(allExamplesScript, aggregateRunnerCommand);
+  assert.doesNotMatch(allExamplesScript, finalExampleCommand);
 });
