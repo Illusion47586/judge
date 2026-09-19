@@ -104,6 +104,33 @@ test("a second rate limit is final", async () => {
   assert.deepEqual(result, { attempts: 2, file: "01.ts", passed: false });
 });
 
+test("continues after a rate-limit retry fails", async () => {
+  const attempted: string[] = [];
+  const results = await runExamples({
+    attempt: (file) => {
+      attempted.push(file);
+      if (file === "01.ts") {
+        return Promise.resolve({
+          code: 1,
+          stderrTail:
+            attempted.length === 1 ? "HTTP 429" : "provider unavailable",
+        });
+      }
+      return Promise.resolve({ code: 0, stderrTail: "" });
+    },
+    delayMs: 0,
+    files: ["01.ts", "02.ts"],
+    retryDelayMs: 0,
+    wait: () => Promise.resolve(),
+  });
+
+  assert.deepEqual(attempted, ["01.ts", "01.ts", "02.ts"]);
+  assert.deepEqual(results, [
+    { attempts: 2, file: "01.ts", passed: false },
+    { attempts: 1, file: "02.ts", passed: true },
+  ]);
+});
+
 test("recognizes only explicit rate-limit output", () => {
   assert.equal(isRateLimited("statusCode: 429"), true);
   assert.equal(isRateLimited("code: 'rate_limit'"), true);
