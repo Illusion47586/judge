@@ -1,5 +1,11 @@
 # Release and Commit Governance Implementation Plan
 
+> **pnpm amendment (2026-09-19):** The approved repository-wide pnpm migration
+> supersedes npm commands in every unexecuted task. Use pnpm 12.4.2 and
+> `pnpm-lock.yaml`; npm is permitted only for the final
+> `npm publish --ignore-scripts` OIDC registry upload. Completed Task 1 through
+> Task 3 command transcripts remain historical records.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Judge a public Changesets-managed npm package with OIDC-only releases, strict Conventional Commits, required Changeset decisions, local Git hooks, cached CI, and enforced GitHub merge policy.
@@ -633,17 +639,26 @@ test("release workflow separates selection, versioning, and publishing", () => {
   assert.match(workflow, /github-token: \$\{\{ steps\.app-token\.outputs\.token \}\}/u);
   assert.match(workflow, /commit-message: "chore\(release\): version package"/u);
   assert.match(workflow, /pr-title: "chore\(release\): version package"/u);
-  assert.match(workflow, /script: npm run version-packages/u);
-  assert.match(workflow, /script: npm run release/u);
+  assert.match(workflow, /script: pnpm version-packages/u);
+  assert.match(workflow, /script: pnpm release/u);
 });
 
-test("publishing uses fresh OIDC-only installs", () => {
+test("every release job sets up pinned pnpm and installs fresh", () => {
+  assert.equal(workflow.match(/uses: pnpm\/action-setup@v6/gu)?.length, 3);
+  assert.equal(
+    workflow.match(/run: pnpm install --frozen-lockfile/gu)?.length,
+    3
+  );
+  assert.doesNotMatch(workflow, /actions\/cache/u);
+  assert.doesNotMatch(workflow, /restore-keys:/u);
+});
+
+test("publishing is OIDC-only and fails closed", () => {
   assert.match(workflow, /id-token: write/u);
   assert.match(workflow, /registry-url: "https:\/\/registry\.npmjs\.org"/u);
   assert.match(workflow, /package-manager-cache: false/u);
-  assert.match(workflow, /npm ci/u);
-  assert.doesNotMatch(workflow, /actions\/cache/u);
   assert.doesNotMatch(workflow, /NPM_TOKEN|NODE_AUTH_TOKEN/u);
+  assert.doesNotMatch(workflow, /\bnpm\s+(?:ci|install|run|pack|test)\b/u);
 });
 ```
 
@@ -682,13 +697,14 @@ jobs:
       mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - name: Select release mode
         id: select-mode
         uses: changesets/action/select-mode@v2.1.2
@@ -703,13 +719,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - name: Mint release app token
         id: app-token
         uses: actions/create-github-app-token@v3.2.0
@@ -724,7 +741,7 @@ jobs:
         uses: changesets/action/version@v2.1.2
         with:
           github-token: ${{ steps.app-token.outputs.token }}
-          script: npm run version-packages
+          script: pnpm version-packages
           commit-message: "chore(release): version package"
           pr-title: "chore(release): version package"
 
@@ -739,17 +756,18 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
-      - run: npm ci
-      - name: Publish with npm trusted publishing
+      - run: pnpm install --frozen-lockfile
+      - name: Publish with trusted publishing
         uses: changesets/action/publish@v2.1.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: npm run release
+          script: pnpm release
           create-github-releases: true
           push-git-tags: true
 ```
@@ -763,13 +781,14 @@ Create `CONTRIBUTING.md` with these sections and commands:
 
 ## Install
 
-Run `npm ci`. The `prepare` lifecycle installs the repository's Husky hooks.
+Install the pnpm version pinned in `package.json`, then run
+`pnpm install --frozen-lockfile`. The `prepare` lifecycle installs the
+repository's Husky hooks during local development.
 
 ## Before committing
 
-The pre-commit hook runs `npm run lint` and `npm run typecheck`. Run
-`npm run check` before opening a pull request to include tests and contract
-checks.
+The pre-commit hook runs `pnpm lint` and `pnpm typecheck`. Run `pnpm check`
+before opening a pull request to include tests and contract checks.
 
 ## Conventional Commits
 
@@ -790,8 +809,8 @@ Changeset. Its comments are advisory; the CI policy below is authoritative.
 
 Every pull request must include an explicit release decision.
 
-- Run `npm run changeset` for a user-visible change and select the SemVer bump.
-- Run `npm run changeset -- --empty` for documentation, tests, CI, or another
+- Run `pnpm changeset` for a user-visible change and select the SemVer bump.
+- Run `pnpm changeset --empty` for documentation, tests, CI, or another
   change that should not release the package.
 
 Commit the generated `.changeset/*.md` file with the pull request.
@@ -810,8 +829,9 @@ Merges to `main` accumulate Changesets. The Release workflow creates or updates
 `chore(release): version package`. Merging that pull request publishes the
 version to npm, creates the Git tag, and creates the GitHub release.
 
-Release jobs use fresh installs and npm trusted publishing. They do not use an
-npm token or dependency cache.
+Release jobs run fresh `pnpm install --frozen-lockfile` installs without a
+dependency cache. pnpm runs every project command. The release script uses npm
+only for its internal `npm publish --ignore-scripts` OIDC registry upload.
 
 ## GitHub automation apps
 
@@ -834,8 +854,9 @@ either create a long-lived credential or require manual CI approval.
 
 1. Create or verify the `brkn-labs` organization on npm and publishing access
    for `@brkn-labs/judge`.
-2. From a clean checkout of `main`, run the full repository checks and manually
-   publish public version `0.0.0` using the maintainer's interactive npm login.
+2. From a clean checkout of `main`, run `pnpm check`, `pnpm build`, and
+   `pnpm pack --dry-run`, then manually publish public version `0.0.0` using the
+   maintainer's interactive npm authentication.
 3. Open the npm package settings and add a GitHub Actions trusted publisher with:
    - owner: `Illusion47586`
    - repository: `judge`
@@ -852,6 +873,10 @@ If versioning fails, verify the release GitHub App installation, client ID,
 private key, and two repository permissions before rerunning the workflow. If
 publishing fails after the release pull request merged, correct the npm trusted
 publisher and rerun the failed publish job; do not create another version bump.
+
+If `npm publish --ignore-scripts` succeeds but tag creation fails, verify that
+the version exists on the npm registry, create or repair the matching Git tag,
+and rerun only after reconciling the release state.
 ```
 
 - [ ] **Step 6: Verify release automation and docs**
@@ -862,9 +887,9 @@ Run:
 node --test test/release-workflow.test.ts
 rg -n 'NPM_TOKEN|NODE_AUTH_TOKEN' .github && exit 1 || true
 git diff --name-only main...HEAD | rg '(^|/)README(\.|$)' && exit 1 || true
-npm run check
-npm run build
-npm pack --dry-run
+pnpm check
+pnpm build
+pnpm pack --dry-run
 ```
 
 Expected: workflow contract and full gates pass; no token reference or README change exists; package dry-run contains only the allowed public files.
@@ -873,7 +898,7 @@ Expected: workflow contract and full gates pass; no token reference or README ch
 
 ```bash
 git add .github/workflows/release.yml CONTRIBUTING.md docs/releasing.md test/release-workflow.test.ts
-git commit -m "ci: automate oidc releases"
+git commit -m "ci: automate pnpm-orchestrated oidc releases"
 ```
 
 Expected: commit succeeds through local hooks.
@@ -895,9 +920,9 @@ Expected: commit succeeds through local hooks.
 Run:
 
 ```bash
-npm run check
-npm run build
-npm pack --dry-run
+pnpm check
+pnpm build
+pnpm pack --dry-run
 node --test test/package-isolation.test.ts test/package-exports.test.ts
 git diff --check
 git diff --name-only main...HEAD | rg '(^|/)README(\.|$)' && exit 1 || true

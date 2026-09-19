@@ -59,8 +59,10 @@ major releases. `.changeset/config.json` will use:
 - no private-package versioning, because this package becomes public.
 
 Package scripts will expose clear entry points for creating a Changeset,
-versioning packages, checking status, and publishing. The publish script will
-build before invoking `changeset publish`.
+versioning packages, checking status, and publishing. pnpm runs all project
+commands. The publish script builds, uses `npm publish --ignore-scripts` only
+for the OIDC registry upload, and then invokes `pnpm exec changeset git-tag` so
+the Changesets v2 action receives release metadata through `CHANGESETS_OUTPUT`.
 
 Every ordinary pull request must add one new `.changeset/*.md` file. A change
 that should not release the package must still add an explicit empty Changeset,
@@ -88,8 +90,8 @@ project will not invent a separate commit grammar.
 
 Husky will install hooks through the package `prepare` script:
 
-- `.husky/pre-commit` runs `npm run lint` followed by `npm run typecheck`;
-- `.husky/commit-msg` runs Commitlint against the pending commit message.
+- `.husky/pre-commit` runs `pnpm lint` followed by `pnpm typecheck`;
+- `.husky/commit-msg` runs `pnpm commitlint` against the pending commit message.
 
 CI remains authoritative because local hooks can be disabled. On pull requests,
 CI will validate every commit between the base SHA and head SHA and separately
@@ -106,14 +108,15 @@ read-only repository permissions. It will contain two responsibilities:
 1. A policy job validates commits, the pull-request title, and the required
    Changeset decision.
 2. A test matrix runs on Node `22.18` (the declared minimum) and Node `24`
-   (current LTS), executes `npm run check`, builds the package, and exercises
-   `npm pack --dry-run`.
+   (current LTS), executes `pnpm check`, builds the package, and exercises
+   `pnpm pack --dry-run`.
 
 Each CI job will cache the actual `node_modules` directory with
 `actions/cache`. The exact cache key includes runner OS, architecture, Node
-version, and the `package-lock.json` hash. The workflow will run `npm ci` only
-on a cache miss. It will not use a broad restore prefix, so dependencies from a
-different lockfile or Node version cannot be restored as a usable hit.
+version, `package.json`, and the `pnpm-lock.yaml` hash. The workflow will run
+`pnpm install --frozen-lockfile` only on a cache miss. It will not use a broad
+restore prefix, so dependencies from a different manifest, lockfile, or Node
+version cannot be restored as a usable hit.
 
 Branch protection for `main` will require the policy job and both Node matrix
 checks. No review-count rule is added by this scope.
@@ -131,11 +134,13 @@ stay separated:
 3. `publish` receives `id-token: write` and only the GitHub permissions required
    to create tags and GitHub releases, then runs the build-and-publish script.
 
-Release jobs always use a fresh `npm ci`; they do not restore dependency caches.
-This follows npm's trusted-publishing guidance to disable caching in release
-builds. The workflow uses a GitHub-hosted runner, a Node/npm version that
-supports npm trusted publishing, and `registry-url` for npm. It defines no npm
-token and has no token fallback.
+Release jobs run a fresh `pnpm install --frozen-lockfile` and restore no
+dependency cache. pnpm runs all project commands. The final registry transport
+is the sole exception: `npm publish --ignore-scripts` uses npm trusted
+publishing, after which `pnpm exec changeset git-tag` reports release metadata
+to the Changesets v2 publish action. The workflow uses a GitHub-hosted runner,
+a Node/npm version that supports npm trusted publishing, and `registry-url` for
+npm. It defines no npm token and has no token fallback.
 
 Publishing therefore fails closed until OIDC is bootstrapped. The one-time
 operator sequence is:
@@ -188,8 +193,8 @@ static repository contracts. Verification will include:
 - direct execution of both Husky hook commands without creating a commit;
 - package metadata and Changesets configuration assertions;
 - workflow structure and permission assertions;
-- `npm run check` on the supported local environment;
-- `npm run build` and `npm pack --dry-run`; and
+- `pnpm check` on the supported local environment;
+- `pnpm build` and `pnpm pack --dry-run`; and
 - inspection of GitHub visibility, merge settings, branch protection, and CI
   results after the implementation branch is pushed.
 
